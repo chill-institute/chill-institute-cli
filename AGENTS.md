@@ -1,29 +1,23 @@
-# cli Agent Notes
+# CLI
 
-## Purpose
+`cli` is the `chill.institute` command-line client. Treat it as an agent-first SDK surface with a strong human CLI on top.
 
-`cli` is the `chill.institute` command line client and should evolve as an agent-first SDK surface, not only a human shell tool.
+## Priorities
 
-## Maintainer Philosophy
-
-- Prefer machine-readable contracts first. New command behavior should have a stable JSON story before adding pretty output.
+- Prefer machine-readable contracts first. New behavior should have a stable JSON story before it gets nicer human formatting.
 - Keep `stdout` for command results and `stderr` for prompts, progress, warnings, and recovery hints.
-- Favor explicit, inspectable surfaces over hidden behavior. Schema/describe support, clear auth requirements, and narrow flags beat magical prompts.
-- Design mutating commands so `--dry-run`, idempotence, and future field filtering can be added cleanly.
-- Keep shared logic reusable. Put transport, auth, normalization, and response handling in deep modules that can later back CLI, agents, and MCP surfaces.
+- Favor explicit, inspectable surfaces. Clear auth requirements, schema/describe support, and narrow flags beat magical prompts.
+- Design mutating commands so `--dry-run`, idempotence, and future field filtering can be added without reshaping the command.
+- Keep transport, auth, normalization, and response handling reusable so the same core can back CLI, agents, and future MCP surfaces.
 - Treat agent input as untrusted. Validate and normalize flags, JSON payloads, URLs, and file paths at the boundary.
+
+## Contract Changes
+
+- If a command surface, auth flow, default, or output contract changes, update the user-facing `chilly-cli` skill in [skills/](./skills/) in the same pass.
+- Keep maintainer guidance in this file. Keep consumer usage guidance in the skill.
 
 ## Validation
 
-Run these before finishing meaningful changes:
-
 - `go test ./...`
 - `mise run verify`
-- For command surface changes: `go run ./cmd/chilly <command> --help`
-
-## Skills
-
-- Repo-local skills live in [skills/](./skills/).
-- The repo-local `chilly-cli` skill is for agents using the CLI, not for maintainers editing the CLI.
-- Keep build philosophy and contributor instructions in this file, not in the usage skill.
-- As command surfaces, auth flows, defaults, or output contracts change, update the consumer-facing `chilly-cli` skill in the same pass so downstream agents stay aligned with the real SDK behavior.
+- For command surface changes, also run `go run ./cmd/chilly <command> --help`.
