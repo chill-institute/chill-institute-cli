@@ -2,7 +2,7 @@ module github.com/chill-institute/cli
 
 go 1.25.0
 
-require github.com/spf13/cobra v1.10.1
+require github.com/spf13/cobra v1.10.2
 
 require (
 	4d63.com/gocheckcompilerdirectives v1.3.0 // indirect
