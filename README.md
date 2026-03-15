@@ -24,23 +24,30 @@ chilly version
 ### Prompt for Agents
 
 ```text
-Use `chilly` to interact with chill.institute.
+Use `chilly` to interact with chill.institute from the terminal
 
 Repository:
 https://github.com/chill-institute/cli
 
-Before using the CLI:
-1. Read the install instructions in the repo README:
-   https://github.com/chill-institute/cli/blob/main/README.md
-2. Download and follow the CLI usage skill:
-   https://raw.githubusercontent.com/chill-institute/cli/main/skills/chilly-cli/SKILL.md
+Read and follow this usage skill before operating the CLI:
+https://raw.githubusercontent.com/chill-institute/cli/main/skills/chilly-cli/SKILL.md
 
-Install `chilly` if it is not already on PATH.
+If `chilly` is not already on PATH, install it by following the repo README:
+https://github.com/chill-institute/cli/blob/main/README.md
 
 After install, run:
 chilly doctor --output json
 
-Then follow the skill for command usage, output conventions, and safe mutation patterns
+If auth is missing and browser login is possible, run:
+chilly auth login
+
+If browser login is not possible on the CLI machine, ask the user to open this page in a signed-in browser and copy the token:
+https://binge.institute/auth/cli-token
+
+Then use:
+chilly auth login --token <token>
+
+After setup, continue with the requested task instead of stopping after install or doctor output
 ```
 
 ### Commands for Humans

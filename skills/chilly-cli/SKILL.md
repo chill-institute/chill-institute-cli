@@ -5,7 +5,7 @@ description: Use `chilly` to interact with chill.institute from the terminal. Tr
 
 # Chilly CLI
 
-Use `chilly` as the local command-line entrypoint for chill.institute. Prefer `--output json` for any agent workflow that will parse or transform results.
+Use `chilly` as the local command-line entrypoint for chill.institute, and prefer `--output json` for any agent workflow that will parse or transform results.
 
 ## Quick Start
 
@@ -29,6 +29,8 @@ Use `chilly` as the local command-line entrypoint for chill.institute. Prefer `-
   `chilly auth login`
 - Print the login URL without auto-opening a browser:
   `chilly auth login --no-browser`
+- If the browser is on another machine, open this page in a signed-in browser and copy the token:
+  `https://binge.institute/auth/cli-token`
 - Store an existing token directly:
   `chilly auth login --token <token>`
 - Verify the current login:

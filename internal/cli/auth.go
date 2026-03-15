@@ -38,7 +38,9 @@ func newAuthLoginCommand(app *appContext) *cobra.Command {
 		Short: "Sign in through a browser or store a setup token",
 		Long: strings.TrimSpace(`
 Sign in with the hosted browser flow, or store a setup token directly
-with --token for non-interactive environments.
+with --token for non-interactive or remote environments. If the browser
+is running on another machine, open https://binge.institute/auth/cli-token
+in a signed-in browser and copy the token into --token.
 `),
 		Example: strings.TrimSpace(`
 chilly auth login
