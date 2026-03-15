@@ -23,7 +23,7 @@ func TestArchiveName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ArchiveName() error = %v", err)
 	}
-	if got != "chilly_v1.2.3_darwin_arm64.tar.gz" {
+	if got != "chilly_1.2.3_darwin_arm64.tar.gz" {
 		t.Fatalf("ArchiveName() = %q", got)
 	}
 }
@@ -34,7 +34,7 @@ func TestFindAsset(t *testing.T) {
 	release := Release{
 		TagName: "v1.2.3",
 		Assets: []ReleaseAsset{
-			{Name: "chilly_v1.2.3_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.invalid/chilly.tgz"},
+			{Name: "chilly_1.2.3_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.invalid/chilly.tgz"},
 		},
 	}
 
@@ -70,8 +70,8 @@ func TestVerifyAssetChecksum(t *testing.T) {
 	t.Parallel()
 
 	payload := []byte("archive-bytes")
-	checksums := []byte(fmt.Sprintf("%x  chilly_v1.2.3_darwin_arm64.tar.gz\n", sha256.Sum256(payload)))
-	if err := VerifyAssetChecksum("chilly_v1.2.3_darwin_arm64.tar.gz", payload, checksums); err != nil {
+	checksums := []byte(fmt.Sprintf("%x  chilly_1.2.3_darwin_arm64.tar.gz\n", sha256.Sum256(payload)))
+	if err := VerifyAssetChecksum("chilly_1.2.3_darwin_arm64.tar.gz", payload, checksums); err != nil {
 		t.Fatalf("VerifyAssetChecksum() error = %v", err)
 	}
 }
@@ -80,8 +80,8 @@ func TestVerifyAssetChecksumMismatch(t *testing.T) {
 	t.Parallel()
 
 	payload := []byte("archive-bytes")
-	checksums := []byte("deadbeef  chilly_v1.2.3_darwin_arm64.tar.gz\n")
-	if err := VerifyAssetChecksum("chilly_v1.2.3_darwin_arm64.tar.gz", payload, checksums); err == nil {
+	checksums := []byte("deadbeef  chilly_1.2.3_darwin_arm64.tar.gz\n")
+	if err := VerifyAssetChecksum("chilly_1.2.3_darwin_arm64.tar.gz", payload, checksums); err == nil {
 		t.Fatal("VerifyAssetChecksum() error = nil, want mismatch")
 	}
 }
@@ -182,7 +182,7 @@ func TestLatestAndByTag(t *testing.T) {
 		_ = json.NewEncoder(writer).Encode(Release{
 			TagName: "v1.2.3",
 			Assets: []ReleaseAsset{
-				{Name: "chilly_v1.2.3_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.invalid/chilly.tgz"},
+				{Name: "chilly_1.2.3_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.invalid/chilly.tgz"},
 			},
 		})
 	}))

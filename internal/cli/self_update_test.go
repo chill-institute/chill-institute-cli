@@ -106,7 +106,7 @@ func TestSelfUpdateInstallsOnlyVerifiedAsset(t *testing.T) {
 	archive := mustTarGZBinary(t, "new-binary")
 	assetURL := "https://example.invalid/chilly.tar.gz"
 	checksumURL := "https://example.invalid/checksums.txt"
-	checksumPayload := []byte(fmt.Sprintf("%x  %s\n", sha256.Sum256(archive), "chilly_v1.2.0_darwin_arm64.tar.gz"))
+	checksumPayload := []byte(fmt.Sprintf("%x  %s\n", sha256.Sum256(archive), "chilly_1.2.0_darwin_arm64.tar.gz"))
 
 	newReleaseService = func() releaseService {
 		return &stubReleaseService{
@@ -114,7 +114,7 @@ func TestSelfUpdateInstallsOnlyVerifiedAsset(t *testing.T) {
 				TagName: "v1.2.0",
 				Assets: []update.ReleaseAsset{
 					{Name: "checksums.txt", BrowserDownloadURL: checksumURL},
-					{Name: "chilly_v1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: assetURL},
+					{Name: "chilly_1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: assetURL},
 				},
 			},
 			downloads: map[string][]byte{
@@ -187,11 +187,11 @@ func TestSelfUpdateRejectsChecksumMismatch(t *testing.T) {
 				TagName: "v1.2.0",
 				Assets: []update.ReleaseAsset{
 					{Name: "checksums.txt", BrowserDownloadURL: checksumURL},
-					{Name: "chilly_v1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: assetURL},
+					{Name: "chilly_1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: assetURL},
 				},
 			},
 			downloads: map[string][]byte{
-				checksumURL: []byte("deadbeef  chilly_v1.2.0_darwin_arm64.tar.gz\n"),
+				checksumURL: []byte("deadbeef  chilly_1.2.0_darwin_arm64.tar.gz\n"),
 				assetURL:    archive,
 			},
 		}
