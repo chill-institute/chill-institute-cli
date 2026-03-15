@@ -6,7 +6,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -42,6 +44,45 @@ func TestFindAsset(t *testing.T) {
 	}
 	if asset.BrowserDownloadURL == "" {
 		t.Fatal("expected asset URL")
+	}
+}
+
+func TestFindChecksumAsset(t *testing.T) {
+	t.Parallel()
+
+	release := Release{
+		TagName: "v1.2.3",
+		Assets: []ReleaseAsset{
+			{Name: "checksums.txt", BrowserDownloadURL: "https://example.invalid/checksums.txt"},
+		},
+	}
+
+	asset, err := FindChecksumAsset(release)
+	if err != nil {
+		t.Fatalf("FindChecksumAsset() error = %v", err)
+	}
+	if asset.BrowserDownloadURL == "" {
+		t.Fatal("expected checksum asset URL")
+	}
+}
+
+func TestVerifyAssetChecksum(t *testing.T) {
+	t.Parallel()
+
+	payload := []byte("archive-bytes")
+	checksums := []byte(fmt.Sprintf("%x  chilly_v1.2.3_darwin_arm64.tar.gz\n", sha256.Sum256(payload)))
+	if err := VerifyAssetChecksum("chilly_v1.2.3_darwin_arm64.tar.gz", payload, checksums); err != nil {
+		t.Fatalf("VerifyAssetChecksum() error = %v", err)
+	}
+}
+
+func TestVerifyAssetChecksumMismatch(t *testing.T) {
+	t.Parallel()
+
+	payload := []byte("archive-bytes")
+	checksums := []byte("deadbeef  chilly_v1.2.3_darwin_arm64.tar.gz\n")
+	if err := VerifyAssetChecksum("chilly_v1.2.3_darwin_arm64.tar.gz", payload, checksums); err == nil {
+		t.Fatal("VerifyAssetChecksum() error = nil, want mismatch")
 	}
 }
 

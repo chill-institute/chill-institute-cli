@@ -80,9 +80,21 @@ chilly self-update --version v0.1.0
 			if err != nil {
 				return wrapInternalError("resolve_release_asset_failed", "resolve release asset", err)
 			}
+			checksumAsset, err := update.FindChecksumAsset(release)
+			if err != nil {
+				return wrapInternalError("resolve_checksums_asset_failed", "resolve release checksums", err)
+			}
+
+			checksums, err := service.Download(ctx, checksumAsset.BrowserDownloadURL)
+			if err != nil {
+				return wrapInternalError("download_checksums_failed", "download release checksums", err)
+			}
 			archive, err := service.Download(ctx, asset.BrowserDownloadURL)
 			if err != nil {
 				return wrapInternalError("download_release_asset_failed", "download release asset", err)
+			}
+			if err := update.VerifyAssetChecksum(asset.Name, archive, checksums); err != nil {
+				return wrapInternalError("verify_release_asset_failed", "verify release asset checksum", err)
 			}
 			binary, err := update.ExtractBinary(archive, currentRuntimeGOOS)
 			if err != nil {

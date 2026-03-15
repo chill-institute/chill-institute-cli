@@ -6,6 +6,8 @@ repo="chill-institute/cli"
 binary_name="chilly"
 install_dir="${INSTALL_DIR:-/usr/local/bin}"
 requested_version="${1:-${VERSION:-}}"
+github_api_base="${GITHUB_API_BASE_URL:-https://api.github.com}"
+github_download_base="${GITHUB_DOWNLOAD_BASE_URL:-https://github.com}"
 
 os="$(uname -s | tr '[:upper:]' '[:lower:]')"
 arch="$(uname -m)"
@@ -32,9 +34,23 @@ case "$arch" in
     ;;
 esac
 
+checksum_cmd() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{ print $1 }'
+    return
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{ print $1 }'
+    return
+  fi
+
+  printf 'missing checksum tool: need sha256sum or shasum\n' >&2
+  exit 1
+}
+
 if [[ -z "$requested_version" ]]; then
   requested_version="$(
-    curl -fsSL "https://api.github.com/repos/${repo}/releases/latest" | \
+    curl -fsSL "${github_api_base}/repos/${repo}/releases/latest" | \
       awk -F '"' '/"tag_name":/ { print $4; exit }'
   )"
 fi
@@ -45,7 +61,9 @@ if [[ -z "$requested_version" ]]; then
 fi
 
 archive_name="${binary_name}_${requested_version}_${os}_${arch}.tar.gz"
-download_url="https://github.com/${repo}/releases/download/${requested_version}/${archive_name}"
+checksums_name="checksums.txt"
+download_url="${github_download_base}/${repo}/releases/download/${requested_version}/${archive_name}"
+checksums_url="${github_download_base}/${repo}/releases/download/${requested_version}/${checksums_name}"
 
 tmp_dir="$(mktemp -d)"
 cleanup() {
@@ -55,6 +73,34 @@ trap cleanup EXIT
 
 printf '==> downloading %s\n' "$download_url"
 curl -fsSL "$download_url" -o "${tmp_dir}/${archive_name}"
+
+printf '==> downloading %s\n' "$checksums_url"
+curl -fsSL "$checksums_url" -o "${tmp_dir}/${checksums_name}"
+
+expected_checksum="$(
+  awk -v name="${archive_name}" '
+    {
+      file=$NF
+      sub(/^\*/, "", file)
+      if (file == name) {
+        print $1
+        exit
+      }
+    }
+  ' "${tmp_dir}/${checksums_name}"
+)"
+if [[ -z "${expected_checksum}" ]]; then
+  printf 'failed to resolve checksum for %s\n' "${archive_name}" >&2
+  exit 1
+fi
+
+actual_checksum="$(checksum_cmd "${tmp_dir}/${archive_name}")"
+if [[ "${actual_checksum}" != "${expected_checksum}" ]]; then
+  printf 'checksum mismatch for %s\n' "${archive_name}" >&2
+  printf '  got:  %s\n' "${actual_checksum}" >&2
+  printf '  want: %s\n' "${expected_checksum}" >&2
+  exit 1
+fi
 
 printf '==> extracting %s\n' "$archive_name"
 tar -xzf "${tmp_dir}/${archive_name}" -C "$tmp_dir"
