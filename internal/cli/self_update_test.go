@@ -48,6 +48,7 @@ func TestSelfUpdateCheckReportsReleaseWithoutInstalling(t *testing.T) {
 	restoreReleaseService := newReleaseService
 	restoreGOOS := currentRuntimeGOOS
 	restoreGOARCH := currentRuntimeGOARCH
+	restoreSignedChecksumsVerifier := verifySignedChecksums
 	currentBuildInfo = func() buildinfo.Info { return buildinfo.Info{Version: "v1.0.0"} }
 	newReleaseService = func() releaseService {
 		return &stubReleaseService{
@@ -61,6 +62,7 @@ func TestSelfUpdateCheckReportsReleaseWithoutInstalling(t *testing.T) {
 		newReleaseService = restoreReleaseService
 		currentRuntimeGOOS = restoreGOOS
 		currentRuntimeGOARCH = restoreGOARCH
+		verifySignedChecksums = restoreSignedChecksumsVerifier
 	})
 
 	stdout := &bytes.Buffer{}
@@ -93,9 +95,11 @@ func TestSelfUpdateInstallsOnlyVerifiedAsset(t *testing.T) {
 	restoreGOOS := currentRuntimeGOOS
 	restoreGOARCH := currentRuntimeGOARCH
 	restoreExecutable := currentExecutable
+	restoreSignedChecksumsVerifier := verifySignedChecksums
 	currentBuildInfo = func() buildinfo.Info { return buildinfo.Info{Version: "v1.0.0"} }
 	currentRuntimeGOOS = "darwin"
 	currentRuntimeGOARCH = "arm64"
+	verifySignedChecksums = func(context.Context, []byte, []byte) error { return nil }
 
 	executablePath := filepath.Join(t.TempDir(), "chilly")
 	if err := os.WriteFile(executablePath, []byte("old-binary"), 0o755); err != nil {
@@ -106,6 +110,7 @@ func TestSelfUpdateInstallsOnlyVerifiedAsset(t *testing.T) {
 	archive := mustTarGZBinary(t, "new-binary")
 	assetURL := "https://example.invalid/chilly.tar.gz"
 	checksumURL := "https://example.invalid/checksums.txt"
+	bundleURL := "https://example.invalid/checksums.txt.sigstore.json"
 	checksumPayload := []byte(fmt.Sprintf("%x  %s\n", sha256.Sum256(archive), "chilly_v1.2.0_darwin_arm64.tar.gz"))
 
 	newReleaseService = func() releaseService {
@@ -114,11 +119,13 @@ func TestSelfUpdateInstallsOnlyVerifiedAsset(t *testing.T) {
 				TagName: "v1.2.0",
 				Assets: []update.ReleaseAsset{
 					{Name: "checksums.txt", BrowserDownloadURL: checksumURL},
+					{Name: "checksums.txt.sigstore.json", BrowserDownloadURL: bundleURL},
 					{Name: "chilly_v1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: assetURL},
 				},
 			},
 			downloads: map[string][]byte{
 				checksumURL: checksumPayload,
+				bundleURL:   []byte(`{}`),
 				assetURL:    archive,
 			},
 		}
@@ -130,6 +137,7 @@ func TestSelfUpdateInstallsOnlyVerifiedAsset(t *testing.T) {
 		currentRuntimeGOOS = restoreGOOS
 		currentRuntimeGOARCH = restoreGOARCH
 		currentExecutable = restoreExecutable
+		verifySignedChecksums = restoreSignedChecksumsVerifier
 	})
 
 	stdout := &bytes.Buffer{}
@@ -167,9 +175,11 @@ func TestSelfUpdateRejectsChecksumMismatch(t *testing.T) {
 	restoreGOOS := currentRuntimeGOOS
 	restoreGOARCH := currentRuntimeGOARCH
 	restoreExecutable := currentExecutable
+	restoreSignedChecksumsVerifier := verifySignedChecksums
 	currentBuildInfo = func() buildinfo.Info { return buildinfo.Info{Version: "v1.0.0"} }
 	currentRuntimeGOOS = "darwin"
 	currentRuntimeGOARCH = "arm64"
+	verifySignedChecksums = func(context.Context, []byte, []byte) error { return nil }
 
 	executablePath := filepath.Join(t.TempDir(), "chilly")
 	if err := os.WriteFile(executablePath, []byte("old-binary"), 0o755); err != nil {
@@ -180,6 +190,7 @@ func TestSelfUpdateRejectsChecksumMismatch(t *testing.T) {
 	archive := mustTarGZBinary(t, "new-binary")
 	assetURL := "https://example.invalid/chilly.tar.gz"
 	checksumURL := "https://example.invalid/checksums.txt"
+	bundleURL := "https://example.invalid/checksums.txt.sigstore.json"
 
 	newReleaseService = func() releaseService {
 		return &stubReleaseService{
@@ -187,11 +198,13 @@ func TestSelfUpdateRejectsChecksumMismatch(t *testing.T) {
 				TagName: "v1.2.0",
 				Assets: []update.ReleaseAsset{
 					{Name: "checksums.txt", BrowserDownloadURL: checksumURL},
+					{Name: "checksums.txt.sigstore.json", BrowserDownloadURL: bundleURL},
 					{Name: "chilly_v1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: assetURL},
 				},
 			},
 			downloads: map[string][]byte{
 				checksumURL: []byte("deadbeef  chilly_v1.2.0_darwin_arm64.tar.gz\n"),
+				bundleURL:   []byte(`{}`),
 				assetURL:    archive,
 			},
 		}
@@ -203,6 +216,7 @@ func TestSelfUpdateRejectsChecksumMismatch(t *testing.T) {
 		currentRuntimeGOOS = restoreGOOS
 		currentRuntimeGOARCH = restoreGOARCH
 		currentExecutable = restoreExecutable
+		verifySignedChecksums = restoreSignedChecksumsVerifier
 	})
 
 	command := newSelfUpdateCommand(&appContext{
@@ -217,6 +231,79 @@ func TestSelfUpdateRejectsChecksumMismatch(t *testing.T) {
 		t.Fatal("Execute() error = nil, want checksum failure")
 	}
 	if !strings.Contains(err.Error(), "verify release asset checksum") {
+		t.Fatalf("error = %v", err)
+	}
+
+	installed, readErr := os.ReadFile(executablePath)
+	if readErr != nil {
+		t.Fatalf("ReadFile() error = %v", readErr)
+	}
+	if string(installed) != "old-binary" {
+		t.Fatalf("installed binary = %q", string(installed))
+	}
+}
+
+func TestSelfUpdateRejectsUnsignedChecksums(t *testing.T) {
+	restoreBuildInfo := currentBuildInfo
+	restoreReleaseService := newReleaseService
+	restoreGOOS := currentRuntimeGOOS
+	restoreGOARCH := currentRuntimeGOARCH
+	restoreExecutable := currentExecutable
+	restoreSignedChecksumsVerifier := verifySignedChecksums
+	currentBuildInfo = func() buildinfo.Info { return buildinfo.Info{Version: "v1.0.0"} }
+	currentRuntimeGOOS = "darwin"
+	currentRuntimeGOARCH = "arm64"
+	verifySignedChecksums = func(context.Context, []byte, []byte) error {
+		return errors.New("signature mismatch")
+	}
+
+	executablePath := filepath.Join(t.TempDir(), "chilly")
+	if err := os.WriteFile(executablePath, []byte("old-binary"), 0o755); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	currentExecutable = func() (string, error) { return executablePath, nil }
+
+	checksumURL := "https://example.invalid/checksums.txt"
+	bundleURL := "https://example.invalid/checksums.txt.sigstore.json"
+
+	newReleaseService = func() releaseService {
+		return &stubReleaseService{
+			latestRelease: update.Release{
+				TagName: "v1.2.0",
+				Assets: []update.ReleaseAsset{
+					{Name: "checksums.txt", BrowserDownloadURL: checksumURL},
+					{Name: "checksums.txt.sigstore.json", BrowserDownloadURL: bundleURL},
+					{Name: "chilly_v1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.invalid/chilly.tar.gz"},
+				},
+			},
+			downloads: map[string][]byte{
+				checksumURL: []byte("deadbeef  chilly_v1.2.0_darwin_arm64.tar.gz\n"),
+				bundleURL:   []byte(`{}`),
+			},
+		}
+	}
+
+	t.Cleanup(func() {
+		currentBuildInfo = restoreBuildInfo
+		newReleaseService = restoreReleaseService
+		currentRuntimeGOOS = restoreGOOS
+		currentRuntimeGOARCH = restoreGOARCH
+		currentExecutable = restoreExecutable
+		verifySignedChecksums = restoreSignedChecksumsVerifier
+	})
+
+	command := newSelfUpdateCommand(&appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: &bytes.Buffer{},
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs(nil)
+	err := command.Execute()
+	if err == nil {
+		t.Fatal("Execute() error = nil, want signed checksums failure")
+	}
+	if !strings.Contains(err.Error(), "verify signed release checksums") {
 		t.Fatalf("error = %v", err)
 	}
 
