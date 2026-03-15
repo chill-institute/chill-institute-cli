@@ -14,13 +14,18 @@ import (
 func newUserCommand(app *appContext) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "user",
-		Short: "User RPC commands (Bearer auth)",
+		Short: "Run user account commands through chill.institute",
+		Example: strings.TrimSpace(`
+chilly user profile
+chilly user settings get --output json
+chilly user download-folder
+`),
 	}
 
 	var profileFields string
 	profileCommand := &cobra.Command{
 		Use:   "profile",
-		Short: "Alias for whoami",
+		Short: "Show authenticated profile (alias for whoami)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			selection, err := parseFieldSelection(profileFields)
 			if err != nil {
@@ -45,7 +50,7 @@ func newUserCommand(app *appContext) *cobra.Command {
 	var searchFields string
 	searchCommand := &cobra.Command{
 		Use:   "search",
-		Short: "User search",
+		Short: "Search using your saved profile settings",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			trimmedQuery := strings.TrimSpace(query)
 			if trimmedQuery == "" {
@@ -70,7 +75,7 @@ func newUserCommand(app *appContext) *cobra.Command {
 	var topMoviesFields string
 	topMoviesCommand := &cobra.Command{
 		Use:   "top-movies",
-		Short: "List top movies from user profile",
+		Short: "List top movies using your profile settings",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			selection, err := parseFieldSelection(topMoviesFields)
 			if err != nil {
@@ -93,13 +98,13 @@ func newUserCommand(app *appContext) *cobra.Command {
 func newUserSettingsCommand(app *appContext) *cobra.Command {
 	settingsCommand := &cobra.Command{
 		Use:   "settings",
-		Short: "User settings operations",
+		Short: "Read and update hosted user settings",
 	}
 
 	var getFields string
 	getCommand := &cobra.Command{
 		Use:   "get",
-		Short: "Fetch user settings",
+		Short: "Show hosted user settings",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			selection, err := parseFieldSelection(getFields)
 			if err != nil {
@@ -168,14 +173,14 @@ chilly user settings set --json '{"showTopMovies":true}'
 func newUserTransferCommand(app *appContext) *cobra.Command {
 	transferCommand := &cobra.Command{
 		Use:   "transfer",
-		Short: "Transfer operations",
+		Short: "Transfer commands",
 	}
 
 	var transferURL string
 	var dryRun bool
 	addCommand := &cobra.Command{
 		Use:   "add",
-		Short: "Add transfer",
+		Short: "Add a transfer through chill.institute",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			trimmed := strings.TrimSpace(transferURL)
 			if trimmed == "" {
@@ -198,7 +203,11 @@ func newUserTransferCommand(app *appContext) *cobra.Command {
 func newUserDownloadFolderCommand(app *appContext) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "download-folder",
-		Short: "Show the current download folder",
+		Short: "Show your current download folder",
+		Example: strings.TrimSpace(`
+chilly user download-folder
+chilly user download-folder set 42 --dry-run --output json
+`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runUserRPCWithRenderer(app, procedureUserGetDownloadFolder, map[string]any{}, nil, renderDownloadFolderPretty)
 		},
@@ -251,7 +260,7 @@ chilly user download-folder clear --dry-run --output json
 func newUserFolderCommand(app *appContext) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "folder",
-		Short: "Folder operations",
+		Short: "Inspect folders",
 	}
 
 	getCommand := &cobra.Command{

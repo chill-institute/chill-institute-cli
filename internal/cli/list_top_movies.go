@@ -14,7 +14,7 @@ func newListTopMoviesCommand(app *appContext) *cobra.Command {
 
 	command := &cobra.Command{
 		Use:   "list-top-movies",
-		Short: "List top movies for your profile",
+		Short: "List top movies using your profile settings",
 		Example: strings.TrimSpace(`
 chilly list-top-movies
 chilly list-top-movies --fields movies.title --output json

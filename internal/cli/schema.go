@@ -9,7 +9,12 @@ import (
 func newSchemaCommand(app *appContext) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "schema",
-		Short: "Inspect CLI command and procedure metadata",
+		Short: "Inspect command and procedure contracts",
+		Example: strings.TrimSpace(`
+chilly schema --output json
+chilly schema command search --output json
+chilly search --describe --output json
+`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return app.writeJSONPayload(map[string]any{
 				"commands":   listCommandSchemas(),

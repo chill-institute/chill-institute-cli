@@ -1,13 +1,19 @@
 package cli
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
 )
 
 func newVersionCommand(app *appContext) *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
-		Short: "Show CLI build metadata",
+		Short: "Show CLI build info",
+		Example: strings.TrimSpace(`
+chilly version
+chilly version --output json
+`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			info := currentBuildInfo()
 			return app.writeJSONPayload(map[string]any{

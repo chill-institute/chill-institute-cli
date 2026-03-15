@@ -21,8 +21,13 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) int
 func newRootCommand(app *appContext) *cobra.Command {
 	opts := app.opts
 	command := &cobra.Command{
-		Use:               "chilly",
-		Short:             "Chill CLI for humans and agents",
+		Use:   "chilly",
+		Short: "chill.institute CLI for humans and agents",
+		Example: strings.TrimSpace(`
+chilly auth login
+chilly search --query "dune"
+chilly schema command search --output json
+`),
 		SilenceUsage:      true,
 		SilenceErrors:     true,
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
