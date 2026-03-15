@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,6 +23,7 @@ const (
 	repoOwner      = "chill-institute"
 	repoName       = "cli"
 	binaryName     = "chilly"
+	checksumName   = "checksums.txt"
 	defaultAPIBase = "https://api.github.com"
 )
 
@@ -146,6 +148,28 @@ func FindAsset(release Release, goos string, goarch string) (ReleaseAsset, error
 	return ReleaseAsset{}, fmt.Errorf("release asset %q not found", expectedName)
 }
 
+func FindChecksumAsset(release Release) (ReleaseAsset, error) {
+	for _, asset := range release.Assets {
+		if asset.Name == checksumName {
+			return asset, nil
+		}
+	}
+	return ReleaseAsset{}, fmt.Errorf("release asset %q not found", checksumName)
+}
+
+func VerifyAssetChecksum(assetName string, payload []byte, checksums []byte) error {
+	expected, err := parseChecksum(checksums, assetName)
+	if err != nil {
+		return err
+	}
+
+	actual := fmt.Sprintf("%x", sha256.Sum256(payload))
+	if !strings.EqualFold(actual, expected) {
+		return fmt.Errorf("checksum mismatch for %s: got %s, want %s", assetName, actual, expected)
+	}
+	return nil
+}
+
 func ExtractBinary(archive []byte, goos string) ([]byte, error) {
 	switch strings.TrimSpace(goos) {
 	case "darwin", "linux":
@@ -267,6 +291,32 @@ func extractTarGZBinary(archive []byte) ([]byte, error) {
 	}
 
 	return nil, errors.New("binary not found in tar.gz archive")
+}
+
+func parseChecksum(checksums []byte, assetName string) (string, error) {
+	trimmedName := strings.TrimSpace(assetName)
+	if trimmedName == "" {
+		return "", errors.New("asset name is required")
+	}
+
+	for _, line := range strings.Split(string(checksums), "\n") {
+		fields := strings.Fields(strings.TrimSpace(line))
+		if len(fields) < 2 {
+			continue
+		}
+
+		name := strings.TrimPrefix(fields[len(fields)-1], "*")
+		if name != trimmedName {
+			continue
+		}
+		sum := strings.TrimSpace(fields[0])
+		if len(sum) != sha256.Size*2 {
+			return "", fmt.Errorf("invalid checksum entry for %s", trimmedName)
+		}
+		return sum, nil
+	}
+
+	return "", fmt.Errorf("checksum for %s not found", trimmedName)
 }
 
 func extractZipBinary(archive []byte) ([]byte, error) {

@@ -2,10 +2,6 @@ version: 2
 
 project_name: chilly
 
-before:
-  hooks:
-    - go mod tidy
-
 builds:
   - id: chilly
     main: ./cmd/chilly

@@ -1,10 +1,16 @@
 package cli
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -15,6 +21,7 @@ import (
 type stubReleaseService struct {
 	latestRelease update.Release
 	tagRelease    update.Release
+	downloads     map[string][]byte
 }
 
 func (service *stubReleaseService) Latest(context.Context) (update.Release, error) {
@@ -25,8 +32,15 @@ func (service *stubReleaseService) ByTag(context.Context, string) (update.Releas
 	return service.tagRelease, nil
 }
 
-func (service *stubReleaseService) Download(context.Context, string) ([]byte, error) {
-	return nil, errors.New("unexpected download")
+func (service *stubReleaseService) Download(_ context.Context, rawURL string) ([]byte, error) {
+	if service.downloads == nil {
+		return nil, errors.New("unexpected download")
+	}
+	payload, ok := service.downloads[strings.TrimSpace(rawURL)]
+	if !ok {
+		return nil, errors.New("unexpected download")
+	}
+	return payload, nil
 }
 
 func TestSelfUpdateCheckReportsReleaseWithoutInstalling(t *testing.T) {
@@ -71,4 +85,174 @@ func TestSelfUpdateCheckReportsReleaseWithoutInstalling(t *testing.T) {
 	if output["up_to_date"] != false {
 		t.Fatalf("up_to_date = %v", output["up_to_date"])
 	}
+}
+
+func TestSelfUpdateInstallsOnlyVerifiedAsset(t *testing.T) {
+	restoreBuildInfo := currentBuildInfo
+	restoreReleaseService := newReleaseService
+	restoreGOOS := currentRuntimeGOOS
+	restoreGOARCH := currentRuntimeGOARCH
+	restoreExecutable := currentExecutable
+	currentBuildInfo = func() buildinfo.Info { return buildinfo.Info{Version: "v1.0.0"} }
+	currentRuntimeGOOS = "darwin"
+	currentRuntimeGOARCH = "arm64"
+
+	executablePath := filepath.Join(t.TempDir(), "chilly")
+	if err := os.WriteFile(executablePath, []byte("old-binary"), 0o755); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	currentExecutable = func() (string, error) { return executablePath, nil }
+
+	archive := mustTarGZBinary(t, "new-binary")
+	assetURL := "https://example.invalid/chilly.tar.gz"
+	checksumURL := "https://example.invalid/checksums.txt"
+	checksumPayload := []byte(fmt.Sprintf("%x  %s\n", sha256.Sum256(archive), "chilly_v1.2.0_darwin_arm64.tar.gz"))
+
+	newReleaseService = func() releaseService {
+		return &stubReleaseService{
+			latestRelease: update.Release{
+				TagName: "v1.2.0",
+				Assets: []update.ReleaseAsset{
+					{Name: "checksums.txt", BrowserDownloadURL: checksumURL},
+					{Name: "chilly_v1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: assetURL},
+				},
+			},
+			downloads: map[string][]byte{
+				checksumURL: checksumPayload,
+				assetURL:    archive,
+			},
+		}
+	}
+
+	t.Cleanup(func() {
+		currentBuildInfo = restoreBuildInfo
+		newReleaseService = restoreReleaseService
+		currentRuntimeGOOS = restoreGOOS
+		currentRuntimeGOARCH = restoreGOARCH
+		currentExecutable = restoreExecutable
+	})
+
+	stdout := &bytes.Buffer{}
+	command := newSelfUpdateCommand(&appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs(nil)
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	installed, err := os.ReadFile(executablePath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if string(installed) != "new-binary" {
+		t.Fatalf("installed binary = %q", string(installed))
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if output["installed_version"] != "v1.2.0" {
+		t.Fatalf("installed_version = %v", output["installed_version"])
+	}
+}
+
+func TestSelfUpdateRejectsChecksumMismatch(t *testing.T) {
+	restoreBuildInfo := currentBuildInfo
+	restoreReleaseService := newReleaseService
+	restoreGOOS := currentRuntimeGOOS
+	restoreGOARCH := currentRuntimeGOARCH
+	restoreExecutable := currentExecutable
+	currentBuildInfo = func() buildinfo.Info { return buildinfo.Info{Version: "v1.0.0"} }
+	currentRuntimeGOOS = "darwin"
+	currentRuntimeGOARCH = "arm64"
+
+	executablePath := filepath.Join(t.TempDir(), "chilly")
+	if err := os.WriteFile(executablePath, []byte("old-binary"), 0o755); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	currentExecutable = func() (string, error) { return executablePath, nil }
+
+	archive := mustTarGZBinary(t, "new-binary")
+	assetURL := "https://example.invalid/chilly.tar.gz"
+	checksumURL := "https://example.invalid/checksums.txt"
+
+	newReleaseService = func() releaseService {
+		return &stubReleaseService{
+			latestRelease: update.Release{
+				TagName: "v1.2.0",
+				Assets: []update.ReleaseAsset{
+					{Name: "checksums.txt", BrowserDownloadURL: checksumURL},
+					{Name: "chilly_v1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: assetURL},
+				},
+			},
+			downloads: map[string][]byte{
+				checksumURL: []byte("deadbeef  chilly_v1.2.0_darwin_arm64.tar.gz\n"),
+				assetURL:    archive,
+			},
+		}
+	}
+
+	t.Cleanup(func() {
+		currentBuildInfo = restoreBuildInfo
+		newReleaseService = restoreReleaseService
+		currentRuntimeGOOS = restoreGOOS
+		currentRuntimeGOARCH = restoreGOARCH
+		currentExecutable = restoreExecutable
+	})
+
+	command := newSelfUpdateCommand(&appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: &bytes.Buffer{},
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs(nil)
+	err := command.Execute()
+	if err == nil {
+		t.Fatal("Execute() error = nil, want checksum failure")
+	}
+	if !strings.Contains(err.Error(), "verify release asset checksum") {
+		t.Fatalf("error = %v", err)
+	}
+
+	installed, readErr := os.ReadFile(executablePath)
+	if readErr != nil {
+		t.Fatalf("ReadFile() error = %v", readErr)
+	}
+	if string(installed) != "old-binary" {
+		t.Fatalf("installed binary = %q", string(installed))
+	}
+}
+
+func mustTarGZBinary(t *testing.T, payload string) []byte {
+	t.Helper()
+
+	var archive bytes.Buffer
+	gzipWriter := gzip.NewWriter(&archive)
+	tarWriter := tar.NewWriter(gzipWriter)
+
+	content := []byte(payload)
+	header := &tar.Header{
+		Name: "chilly",
+		Mode: 0o755,
+		Size: int64(len(content)),
+	}
+	if err := tarWriter.WriteHeader(header); err != nil {
+		t.Fatalf("WriteHeader() error = %v", err)
+	}
+	if _, err := tarWriter.Write(content); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	if err := tarWriter.Close(); err != nil {
+		t.Fatalf("Close() tar error = %v", err)
+	}
+	if err := gzipWriter.Close(); err != nil {
+		t.Fatalf("Close() gzip error = %v", err)
+	}
+	return archive.Bytes()
 }

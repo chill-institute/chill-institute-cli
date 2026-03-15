@@ -13,6 +13,10 @@ run = "./scripts/check-format.sh"
 description = "Run static analysis"
 run = "go tool golangci-lint run ./..."
 
+[tasks."mod:check"]
+description = "Ensure go.mod and go.sum are tidy without mutating them"
+run = "go mod tidy -diff"
+
 [tasks.test]
 description = "Run CLI unit tests"
 run = "go test ./..."
@@ -31,4 +35,4 @@ run = "./scripts/setup-githooks.sh"
 
 [tasks.verify]
 description = "Run formatting, lint, coverage, and security checks"
-depends = ["fmt:check", "lint", "coverage", "security"]
+depends = ["fmt:check", "mod:check", "lint", "coverage", "security"]
