@@ -37,6 +37,15 @@ Fresh configs default to `https://api.binge.institute`. Saved local config can o
 - Install a specific release:
   `chilly self-update --version v0.1.0`
 
+## Shell Completion
+
+- Generate zsh completions:
+  `chilly completion zsh`
+- Generate bash completions:
+  `chilly completion bash`
+- Generate fish completions:
+  `chilly completion fish`
+
 ## Authentication
 
 - Interactive browser-assisted login:

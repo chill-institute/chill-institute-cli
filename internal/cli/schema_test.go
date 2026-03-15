@@ -12,6 +12,7 @@ func TestRootCommandIncludesSchemaTopLevelCommand(t *testing.T) {
 	expected := map[string]bool{
 		"add-transfer":    true,
 		"auth":            true,
+		"completion":      true,
 		"list-top-movies": true,
 		"schema":          true,
 		"search":          true,
@@ -32,6 +33,33 @@ func TestRootCommandIncludesSchemaTopLevelCommand(t *testing.T) {
 		if missing {
 			t.Fatalf("missing top-level command %q", name)
 		}
+	}
+}
+
+func TestCompletionCommandReturnsMetadata(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	command := newRootCommand(&appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"schema", "command", "completion", "--output", "json"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	var output schemaEntry
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if output.ID != "completion" {
+		t.Fatalf("ID = %q, want %q", output.ID, "completion")
+	}
+	if output.Output.JSON {
+		t.Fatal("completion metadata should not claim json output")
 	}
 }
 

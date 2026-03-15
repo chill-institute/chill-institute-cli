@@ -93,6 +93,16 @@ var commandSchemaRegistry = map[string]schemaEntry{
 			schemaInput{Name: "dry-run", Type: "boolean", Description: "validate input and print the local config change without saving it"},
 		),
 	},
+	"completion": {
+		ID:       "completion",
+		Kind:     "command",
+		Summary:  "Generate shell completion scripts",
+		AuthMode: string(rpcAuthNone),
+		Output:   schemaOutput{JSON: false, Human: true},
+		Inputs: appendInputs(
+			schemaInput{Name: "shell", Type: "string", Required: true, Description: "shell name: bash, zsh, fish, or powershell"},
+		),
+	},
 	"list-top-movies": {
 		ID:              "list-top-movies",
 		Kind:            "command",
