@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/chill-institute/cli/internal/buildinfo"
@@ -32,7 +33,12 @@ func newSelfUpdateCommand(app *appContext) *cobra.Command {
 
 	command := &cobra.Command{
 		Use:   "self-update",
-		Short: "Download and install the latest released CLI binary",
+		Short: "Check for or install released CLI updates",
+		Example: strings.TrimSpace(`
+chilly self-update --check
+chilly self-update
+chilly self-update --version v0.1.0
+`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			service := newReleaseService()
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)

@@ -16,7 +16,7 @@ func newSearchCommand(app *appContext) *cobra.Command {
 
 	command := &cobra.Command{
 		Use:   "search",
-		Short: "Search torrents using your user profile settings",
+		Short: "Search using your saved profile settings",
 		Example: strings.TrimSpace(`
 chilly search --query "dune"
 chilly search --query "dune" --fields results.title --output json

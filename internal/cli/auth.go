@@ -15,7 +15,12 @@ import (
 func newAuthCommand(app *appContext) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "auth",
-		Short: "Authentication commands",
+		Short: "Sign in and manage local auth tokens",
+		Example: strings.TrimSpace(`
+chilly auth login
+chilly auth login --token "token-from-setup"
+chilly auth logout --dry-run --output json
+`),
 	}
 
 	command.AddCommand(newAuthLoginCommand(app))
@@ -30,7 +35,16 @@ func newAuthLoginCommand(app *appContext) *cobra.Command {
 
 	command := &cobra.Command{
 		Use:   "login",
-		Short: "Authenticate in a browser or store a setup token",
+		Short: "Sign in through a browser or store a setup token",
+		Long: strings.TrimSpace(`
+Sign in with the hosted browser flow, or store a setup token directly
+with --token for non-interactive environments.
+`),
+		Example: strings.TrimSpace(`
+chilly auth login
+chilly auth login --no-browser
+chilly auth login --token "token-from-setup"
+`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := app.loadConfig()
 			if err != nil {
@@ -135,7 +149,11 @@ func newAuthLogoutCommand(app *appContext) *cobra.Command {
 
 	command := &cobra.Command{
 		Use:   "logout",
-		Short: "Clear auth token from local config",
+		Short: "Clear the stored auth token from local config",
+		Example: strings.TrimSpace(`
+chilly auth logout
+chilly auth logout --dry-run --output json
+`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := app.loadConfig()
 			if err != nil {

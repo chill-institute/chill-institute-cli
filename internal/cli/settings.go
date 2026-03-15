@@ -14,7 +14,12 @@ const redactedToken = "[redacted]"
 func newSettingsCommand(app *appContext) *cobra.Command {
 	command := &cobra.Command{
 		Use:   "settings",
-		Short: "Manage local CLI settings",
+		Short: "Manage local CLI config",
+		Example: strings.TrimSpace(`
+chilly settings show
+chilly settings get api-base-url
+chilly settings set api-base-url https://api.binge.institute --dry-run --output json
+`),
 	}
 
 	command.AddCommand(newSettingsPathCommand(app))
@@ -27,7 +32,7 @@ func newSettingsCommand(app *appContext) *cobra.Command {
 func newSettingsPathCommand(app *appContext) *cobra.Command {
 	return &cobra.Command{
 		Use:   "path",
-		Short: "Print local settings file path",
+		Short: "Show local config file path",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := app.configStore()
 			if err != nil {
@@ -41,7 +46,7 @@ func newSettingsPathCommand(app *appContext) *cobra.Command {
 func newSettingsShowCommand(app *appContext) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show",
-		Short: "Show local CLI settings (auth token redacted)",
+		Short: "Show local CLI config (auth token redacted)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadStoredCLISettings(app)
 			if err != nil {
@@ -62,7 +67,7 @@ func newSettingsShowCommand(app *appContext) *cobra.Command {
 func newSettingsGetCommand(app *appContext) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <key>",
-		Short: "Get a local CLI setting value",
+		Short: "Show one local CLI setting",
 		Args:  allowDescribeArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key, err := normalizeSettingsKey(args[0])
@@ -93,7 +98,7 @@ func newSettingsSetCommand(app *appContext) *cobra.Command {
 
 	command := &cobra.Command{
 		Use:   "set <key> <value>",
-		Short: "Set a local CLI setting value",
+		Short: "Set one local CLI setting",
 		Example: strings.TrimSpace(`
 chilly settings set api-base-url https://api.binge.institute
 chilly settings set api-base-url https://api.chill.institute --dry-run --output json

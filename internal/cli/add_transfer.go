@@ -15,7 +15,7 @@ func newAddTransferCommand(app *appContext) *cobra.Command {
 
 	command := &cobra.Command{
 		Use:   "add-transfer",
-		Short: "Add transfer to put.io",
+		Short: "Add a transfer through chill.institute",
 		Example: strings.TrimSpace(`
 chilly add-transfer --url "magnet:?xt=urn:btih:..."
 chilly add-transfer --url "magnet:?xt=urn:btih:..." --dry-run --output json

@@ -41,7 +41,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"chilly": {
 		ID:       "chilly",
 		Kind:     "command",
-		Summary:  "Chill CLI for humans and agents",
+		Summary:  "chill.institute CLI for humans and agents",
 		AuthMode: string(rpcAuthNone),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs:   cloneInputs(commonCommandInputs),
@@ -49,7 +49,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"add-transfer": {
 		ID:              "add-transfer",
 		Kind:            "command",
-		Summary:         "Add transfer to put.io",
+		Summary:         "Add a transfer through chill.institute",
 		AuthMode:        string(rpcAuthUser),
 		Mutates:         true,
 		SupportsDryRun:  true,
@@ -63,7 +63,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"auth": {
 		ID:       "auth",
 		Kind:     "command",
-		Summary:  "Authentication commands",
+		Summary:  "Sign in and manage local auth tokens",
 		AuthMode: string(rpcAuthNone),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs:   cloneInputs(commonCommandInputs),
@@ -71,7 +71,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"auth login": {
 		ID:       "auth login",
 		Kind:     "command",
-		Summary:  "Authenticate in a browser or store a setup token",
+		Summary:  "Sign in through a browser or store a setup token",
 		AuthMode: string(rpcAuthNone),
 		Mutates:  true,
 		Output:   schemaOutput{JSON: true, Human: true},
@@ -84,7 +84,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"auth logout": {
 		ID:             "auth logout",
 		Kind:           "command",
-		Summary:        "Clear auth token from local config",
+		Summary:        "Clear the stored auth token from local config",
 		AuthMode:       string(rpcAuthNone),
 		Mutates:        true,
 		SupportsDryRun: true,
@@ -106,7 +106,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"list-top-movies": {
 		ID:              "list-top-movies",
 		Kind:            "command",
-		Summary:         "List top movies for your profile",
+		Summary:         "List top movies using your profile settings",
 		AuthMode:        string(rpcAuthUser),
 		SupportsFields:  true,
 		LinkedProcedure: procedureUserGetTopMovies,
@@ -118,7 +118,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"schema": {
 		ID:       "schema",
 		Kind:     "command",
-		Summary:  "Inspect CLI command and procedure metadata",
+		Summary:  "Inspect command and procedure contracts",
 		AuthMode: string(rpcAuthNone),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs:   cloneInputs(commonCommandInputs),
@@ -146,7 +146,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"search": {
 		ID:              "search",
 		Kind:            "command",
-		Summary:         "Search torrents using your user profile settings",
+		Summary:         "Search using your saved profile settings",
 		AuthMode:        string(rpcAuthUser),
 		SupportsFields:  true,
 		LinkedProcedure: procedureUserSearch,
@@ -160,7 +160,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"self-update": {
 		ID:       "self-update",
 		Kind:     "command",
-		Summary:  "Download and install the latest released CLI binary",
+		Summary:  "Check for or install released CLI updates",
 		AuthMode: string(rpcAuthNone),
 		Mutates:  true,
 		Output:   schemaOutput{JSON: true, Human: true},
@@ -172,7 +172,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"settings": {
 		ID:       "settings",
 		Kind:     "command",
-		Summary:  "Manage local CLI settings",
+		Summary:  "Manage local CLI config",
 		AuthMode: string(rpcAuthNone),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs:   cloneInputs(commonCommandInputs),
@@ -180,7 +180,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"settings get": {
 		ID:       "settings get",
 		Kind:     "command",
-		Summary:  "Get a local CLI setting value",
+		Summary:  "Show one local CLI setting",
 		AuthMode: string(rpcAuthNone),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs: appendInputs(
@@ -190,7 +190,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"settings path": {
 		ID:       "settings path",
 		Kind:     "command",
-		Summary:  "Print local settings file path",
+		Summary:  "Show local config file path",
 		AuthMode: string(rpcAuthNone),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs:   cloneInputs(commonCommandInputs),
@@ -198,7 +198,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"settings set": {
 		ID:             "settings set",
 		Kind:           "command",
-		Summary:        "Set a local CLI setting value",
+		Summary:        "Set one local CLI setting",
 		AuthMode:       string(rpcAuthNone),
 		Mutates:        true,
 		SupportsDryRun: true,
@@ -212,7 +212,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"settings show": {
 		ID:       "settings show",
 		Kind:     "command",
-		Summary:  "Show local CLI settings (auth token redacted)",
+		Summary:  "Show local CLI config (auth token redacted)",
 		AuthMode: string(rpcAuthNone),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs:   cloneInputs(commonCommandInputs),
@@ -220,7 +220,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"user": {
 		ID:       "user",
 		Kind:     "command",
-		Summary:  "User RPC commands (Bearer auth)",
+		Summary:  "Run user account commands through chill.institute",
 		AuthMode: string(rpcAuthUser),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs:   cloneInputs(commonCommandInputs),
@@ -237,7 +237,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"user download-folder": {
 		ID:              "user download-folder",
 		Kind:            "command",
-		Summary:         "Show the current download folder",
+		Summary:         "Show your current download folder",
 		AuthMode:        string(rpcAuthUser),
 		LinkedProcedure: procedureUserGetDownloadFolder,
 		Output:          schemaOutput{JSON: true, Human: true},
@@ -273,7 +273,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"user folder": {
 		ID:       "user folder",
 		Kind:     "command",
-		Summary:  "Folder operations",
+		Summary:  "Inspect folders",
 		AuthMode: string(rpcAuthUser),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs:   cloneInputs(commonCommandInputs),
@@ -292,7 +292,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"user profile": {
 		ID:              "user profile",
 		Kind:            "command",
-		Summary:         "Alias for whoami",
+		Summary:         "Show authenticated profile (alias for whoami)",
 		AuthMode:        string(rpcAuthUser),
 		SupportsFields:  true,
 		LinkedProcedure: procedureUserGetUserProfile,
@@ -304,7 +304,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"user search": {
 		ID:              "user search",
 		Kind:            "command",
-		Summary:         "User search",
+		Summary:         "Search using your saved profile settings",
 		AuthMode:        string(rpcAuthUser),
 		SupportsFields:  true,
 		LinkedProcedure: procedureUserSearch,
@@ -318,7 +318,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"user settings": {
 		ID:       "user settings",
 		Kind:     "command",
-		Summary:  "User settings operations",
+		Summary:  "Read and update hosted user settings",
 		AuthMode: string(rpcAuthUser),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs:   cloneInputs(commonCommandInputs),
@@ -326,7 +326,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"user settings get": {
 		ID:              "user settings get",
 		Kind:            "command",
-		Summary:         "Fetch user settings",
+		Summary:         "Show hosted user settings",
 		AuthMode:        string(rpcAuthUser),
 		SupportsFields:  true,
 		LinkedProcedure: procedureUserGetUserSettings,
@@ -354,7 +354,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"user top-movies": {
 		ID:              "user top-movies",
 		Kind:            "command",
-		Summary:         "List top movies from user profile",
+		Summary:         "List top movies using your profile settings",
 		AuthMode:        string(rpcAuthUser),
 		SupportsFields:  true,
 		LinkedProcedure: procedureUserGetTopMovies,
@@ -366,7 +366,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"user transfer": {
 		ID:       "user transfer",
 		Kind:     "command",
-		Summary:  "Transfer operations",
+		Summary:  "Transfer commands",
 		AuthMode: string(rpcAuthUser),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs:   cloneInputs(commonCommandInputs),
@@ -374,7 +374,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"user transfer add": {
 		ID:              "user transfer add",
 		Kind:            "command",
-		Summary:         "Add transfer",
+		Summary:         "Add a transfer through chill.institute",
 		AuthMode:        string(rpcAuthUser),
 		Mutates:         true,
 		SupportsDryRun:  true,
@@ -400,7 +400,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 	"version": {
 		ID:       "version",
 		Kind:     "command",
-		Summary:  "Show CLI build metadata",
+		Summary:  "Show CLI build info",
 		AuthMode: string(rpcAuthNone),
 		Output:   schemaOutput{JSON: true, Human: true},
 		Inputs:   cloneInputs(commonCommandInputs),

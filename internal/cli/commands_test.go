@@ -94,6 +94,57 @@ func TestCompletionCommandGeneratesZshScript(t *testing.T) {
 	}
 }
 
+func TestRootHelpIncludesExamples(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	command := newRootCommand(&appContext{
+		opts:   &appOptions{output: outputPretty},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"--help"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	rendered := stdout.String()
+	if !strings.Contains(rendered, "Examples:") {
+		t.Fatalf("expected examples in root help: %q", rendered)
+	}
+	if !strings.Contains(rendered, `chilly schema command search --output json`) {
+		t.Fatalf("expected schema example in root help: %q", rendered)
+	}
+}
+
+func TestUserHelpUsesProductFacingCopy(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	command := newRootCommand(&appContext{
+		opts:   &appOptions{output: outputPretty},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"user", "--help"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	rendered := stdout.String()
+	if !strings.Contains(rendered, "Run user account commands through chill.institute") {
+		t.Fatalf("expected product-facing user help: %q", rendered)
+	}
+	if strings.Contains(rendered, "Bearer auth") {
+		t.Fatalf("unexpected internal auth phrasing in user help: %q", rendered)
+	}
+	if !strings.Contains(rendered, "chilly user settings get --output json") {
+		t.Fatalf("expected example in user help: %q", rendered)
+	}
+}
+
 func TestAuthLogoutClearsToken(t *testing.T) {
 	t.Parallel()
 
