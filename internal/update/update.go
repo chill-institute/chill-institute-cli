@@ -116,6 +116,7 @@ func ArchiveName(version string, goos string, goarch string) (string, error) {
 	if normalizedVersion == "" {
 		return "", errors.New("release version is required")
 	}
+	assetVersion := strings.TrimPrefix(normalizedVersion, "v")
 
 	trimmedOS := strings.TrimSpace(goos)
 	trimmedArch := strings.TrimSpace(goarch)
@@ -125,9 +126,9 @@ func ArchiveName(version string, goos string, goarch string) (string, error) {
 
 	switch trimmedOS {
 	case "darwin", "linux":
-		return fmt.Sprintf("%s_%s_%s_%s.tar.gz", binaryName, normalizedVersion, trimmedOS, trimmedArch), nil
+		return fmt.Sprintf("%s_%s_%s_%s.tar.gz", binaryName, assetVersion, trimmedOS, trimmedArch), nil
 	case "windows":
-		return fmt.Sprintf("%s_%s_%s_%s.zip", binaryName, normalizedVersion, trimmedOS, trimmedArch), nil
+		return fmt.Sprintf("%s_%s_%s_%s.zip", binaryName, assetVersion, trimmedOS, trimmedArch), nil
 	default:
 		return "", fmt.Errorf("unsupported target os %q", goos)
 	}

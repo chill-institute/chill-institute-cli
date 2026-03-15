@@ -53,8 +53,11 @@ Released binaries use the `default` profile; dev builds default to `dev` so sour
 ## Verify Release
 
 ```bash
-curl -fsSLO https://github.com/chill-institute/cli/releases/download/v0.1.2/chilly_0.1.2_darwin_arm64.tar.gz
-gh attestation verify chilly_0.1.2_darwin_arm64.tar.gz --repo chill-institute/cli
+VERSION="$(gh release view --repo chill-institute/cli --json tagName -q .tagName)"
+ARCHIVE="chilly_${VERSION#v}_darwin_arm64.tar.gz"
+
+gh release download "$VERSION" --repo chill-institute/cli --pattern "$ARCHIVE"
+gh attestation verify "$ARCHIVE" --repo chill-institute/cli
 ```
 
 The install script verifies release checksums. Use GitHub attestation verification when you also want provenance from the release workflow.
