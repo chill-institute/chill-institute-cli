@@ -38,7 +38,10 @@ func newSettingsPathCommand(app *appContext) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return app.writeJSONPayload(map[string]any{"path": store.Path()})
+			return app.writeJSONPayload(map[string]any{
+				"path":    store.Path(),
+				"profile": app.activeProfile(),
+			})
 		},
 	}
 }
@@ -57,6 +60,7 @@ func newSettingsShowCommand(app *appContext) *cobra.Command {
 				authToken = redactedToken
 			}
 			return app.writeJSONPayload(map[string]any{
+				"profile":      app.activeProfile(),
 				"api_base_url": cfg.APIBaseURL,
 				"auth_token":   authToken,
 			})

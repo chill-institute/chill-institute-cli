@@ -10,8 +10,11 @@ Use these patterns when you need the CLI to do real work.
   `chilly settings show --output json`
 - Config file path:
   `chilly settings path --output json`
+- Config file path for an isolated profile:
+  `chilly settings path --profile dev --output json`
 
 Fresh configs default to `https://api.binge.institute`. Saved local config can override that.
+Dev builds default to a separate `dev` profile path unless `--profile`, `CHILLY_PROFILE`, or `--config` overrides it.
 
 ## Schema And Describe
 

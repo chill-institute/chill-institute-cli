@@ -25,6 +25,7 @@ const (
 
 type appOptions struct {
 	configPath string
+	profile    string
 	apiURL     string
 	output     string
 }
@@ -61,11 +62,28 @@ func newAppContext(opts *appOptions) *appContext {
 }
 
 func (app *appContext) configStore() (*config.Store, error) {
-	store, err := config.NewStore(app.opts.configPath)
+	configPath := strings.TrimSpace(app.opts.configPath)
+	if configPath == "" {
+		defaultPath, err := resolveDefaultConfigPath(app.activeProfile())
+		if err != nil {
+			return nil, wrapInternalError("config_path_resolve_failed", "resolve config path", err)
+		}
+		configPath = defaultPath
+	}
+
+	store, err := config.NewStore(configPath)
 	if err != nil {
 		return nil, wrapInternalError("config_store_init_failed", "initialize config store", err)
 	}
 	return store, nil
+}
+
+func (app *appContext) activeProfile() string {
+	profile, err := resolveConfigProfile(app.opts.profile, currentBuildInfo().IsDev())
+	if err != nil {
+		return config.DefaultProfile()
+	}
+	return profile
 }
 
 func (app *appContext) loadConfig() (config.Config, error) {

@@ -8,6 +8,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	resolveConfigProfile     = config.ResolveProfile
+	resolveDefaultConfigPath = config.DefaultPath
+)
+
 func NewRootCommand() *cobra.Command {
 	opts := &appOptions{output: outputPretty}
 	app := newAppContext(opts)
@@ -33,11 +38,23 @@ chilly schema command search --output json
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			if strings.TrimSpace(opts.configPath) == "" {
-				defaultPath, err := config.DefaultPath()
+				resolvedProfile, err := resolveConfigProfile(opts.profile, currentBuildInfo().IsDev())
+				if err != nil {
+					return usageError("invalid_profile", "invalid --profile %q", opts.profile)
+				}
+				opts.profile = resolvedProfile
+
+				defaultPath, err := resolveDefaultConfigPath(resolvedProfile)
 				if err != nil {
 					return wrapInternalError("resolve_config_path_failed", "resolve config path", err)
 				}
 				opts.configPath = defaultPath
+			} else {
+				resolvedProfile, err := resolveConfigProfile(opts.profile, currentBuildInfo().IsDev())
+				if err != nil {
+					return usageError("invalid_profile", "invalid --profile %q", opts.profile)
+				}
+				opts.profile = resolvedProfile
 			}
 			opts.output = strings.ToLower(strings.TrimSpace(opts.output))
 			if opts.output != outputPretty && opts.output != outputJSON {
@@ -63,6 +80,7 @@ chilly schema command search --output json
 	command.SetOut(app.stdout)
 	command.SetErr(app.stderr)
 	command.PersistentFlags().StringVar(&opts.configPath, "config", "", "config file path")
+	command.PersistentFlags().StringVar(&opts.profile, "profile", "", "config profile to use (default builds use default, dev builds use dev)")
 	command.PersistentFlags().StringVar(&opts.apiURL, "api-url", "", "override API base URL")
 	command.PersistentFlags().StringVar(&opts.output, "output", outputPretty, "output mode: pretty|json")
 	command.PersistentFlags().Bool("describe", false, "print command metadata and exit")

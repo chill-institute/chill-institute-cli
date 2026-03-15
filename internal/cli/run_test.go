@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/chill-institute/cli/internal/buildinfo"
 	"github.com/chill-institute/cli/internal/config"
 )
 
@@ -228,6 +229,40 @@ func TestRunAuthLogoutDryRunReturnsLocalPreview(t *testing.T) {
 	}
 	if request["had_auth_token"] != true {
 		t.Fatalf("request.had_auth_token = %v, want true", request["had_auth_token"])
+	}
+}
+
+func TestRunSettingsPathUsesDevProfileByDefaultForDevBuilds(t *testing.T) {
+	configHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", configHome)
+
+	original := currentBuildInfo
+	currentBuildInfo = func() buildinfo.Info {
+		return buildinfo.Info{Version: "dev", Commit: "test", BuildDate: "test"}
+	}
+	t.Cleanup(func() { currentBuildInfo = original })
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{"settings", "path", "--output", "json"}, strings.NewReader(""), stdout, stderr)
+	if exitCode != int(exitCodeSuccess) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal(stdout) error = %v", err)
+	}
+
+	wantPath := filepath.Join(configHome, "chilly", "profiles", "dev", "config.json")
+	if output["path"] != wantPath {
+		t.Fatalf("path = %v, want %q", output["path"], wantPath)
+	}
+	if output["profile"] != "dev" {
+		t.Fatalf("profile = %v, want %q", output["profile"], "dev")
 	}
 }
 

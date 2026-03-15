@@ -62,16 +62,19 @@ Current command groups:
 ```mermaid
 graph TD
   CLI["command"] --> Store["config.Store"]
-  Store --> File["$XDG_CONFIG_HOME/chilly/config.json"]
+  Store --> File["$XDG_CONFIG_HOME/chilly/config.json or profiles/<profile>/config.json"]
 ```
 
 The config store owns:
 
 - API base URL
 - auth token
+- active profile selection via CLI flags and environment
 
 The store normalizes defaults and writes atomically through a temp-file replace flow.
 It also keeps the config directory private (`0700`) and the config file private (`0600`).
+The historical production path stays at `.../chilly/config.json`. Named profiles live under `.../chilly/profiles/<profile>/config.json`.
+Dev builds resolve to the `dev` profile automatically unless `--profile`, `CHILLY_PROFILE`, or `--config` overrides it.
 
 ## Request Flow
 
