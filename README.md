@@ -58,7 +58,7 @@ Released binaries use the `default` profile; dev builds default to `dev` so sour
 ## Docs
 
 - [Architecture](./docs/ARCHITECTURE.md)
-- [Security](./docs/SECURITY.md)
+- [Security](./SECURITY.md)
 
 ## Contributing
 
