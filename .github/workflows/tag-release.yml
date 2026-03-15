@@ -1,4 +1,4 @@
-name: tag-release
+name: release-main
 
 on:
   push:
@@ -6,12 +6,14 @@ on:
       - main
 
 jobs:
-  tag-release:
+  release-main:
     if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
+      attestations: write
       contents: write
+      id-token: write
       issues: write
       pull-requests: write
 
@@ -24,7 +26,42 @@ jobs:
       - name: Set up mise
         uses: jdx/mise-action@v3
 
+      - name: Cache Go dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/.cache/golangci-lint
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('.tool-versions', 'go.sum', '.golangci.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ hashFiles('.tool-versions', 'go.sum') }}
+            ${{ runner.os }}-go-
+
+      - name: Verify
+        run: mise run verify
+
       - name: Tag next release
+        id: semantic_release
         uses: cycjimmy/semantic-release-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run GoReleaser
+        if: steps.semantic_release.outputs.new_release_published == 'true'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: v2.14.3
+          args: release --clean
+          workdir: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+
+      - name: Attest release archives
+        if: steps.semantic_release.outputs.new_release_published == 'true'
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            dist/chilly_*.tar.gz
+            dist/chilly_*.zip
