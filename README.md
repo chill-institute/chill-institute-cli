@@ -16,7 +16,8 @@ curl -fsSL https://raw.githubusercontent.com/chill-institute/cli/main/scripts/in
 chilly version --output json
 ```
 
-`chilly` currently defaults fresh configs to the staging environment at `https://api.binge.institute` while the CLI surface is still being shaped. Treat that as the active hosted endpoint for now.
+> [!NOTE]
+> `chilly` is currently in beta and defaults fresh configs to the staging backend at `https://api.binge.institute` while we keep shaping the CLI surface.
 
 ## Agent-First Contract
 
