@@ -48,7 +48,7 @@ brews:
     repository:
       owner: chill-institute
       name: homebrew-tap
-      token: "{{ index .Env \"TAP_GITHUB_TOKEN\" }}"
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     directory: Formula
     homepage: https://chill.institute
     description: Agent-first command line client for chill.institute
