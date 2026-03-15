@@ -503,7 +503,7 @@ func TestSettingsShowRedactsToken(t *testing.T) {
 
 	stdout := &bytes.Buffer{}
 	command := newSettingsCommand(&appContext{
-		opts:    &appOptions{configPath: configPath, output: outputJSON},
+		opts:    &appOptions{configPath: configPath, profile: config.DefaultProfile(), output: outputJSON},
 		stdin:   strings.NewReader(""),
 		stdout:  stdout,
 		stderr:  &bytes.Buffer{},
@@ -520,6 +520,38 @@ func TestSettingsShowRedactsToken(t *testing.T) {
 	}
 	if output["auth_token"] != redactedToken {
 		t.Fatalf("auth_token = %v, want %q", output["auth_token"], redactedToken)
+	}
+	if output["profile"] != config.DefaultProfile() {
+		t.Fatalf("profile = %v, want %q", output["profile"], config.DefaultProfile())
+	}
+}
+
+func TestSettingsPathIncludesProfile(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	stdout := &bytes.Buffer{}
+	command := newSettingsCommand(&appContext{
+		opts:    &appOptions{configPath: configPath, profile: "staging", output: outputJSON},
+		stdin:   strings.NewReader(""),
+		stdout:  stdout,
+		stderr:  &bytes.Buffer{},
+		openURL: func(string) error { return nil },
+	})
+	command.SetArgs([]string{"path"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("output json decode error: %v", err)
+	}
+	if output["path"] != configPath {
+		t.Fatalf("path = %v, want %q", output["path"], configPath)
+	}
+	if output["profile"] != "staging" {
+		t.Fatalf("profile = %v, want %q", output["profile"], "staging")
 	}
 }
 

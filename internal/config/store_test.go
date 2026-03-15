@@ -10,7 +10,7 @@ import (
 func TestDefaultPathUsesXDGConfigHome(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "/tmp/chilly-xdg")
 
-	path, err := DefaultPath()
+	path, err := DefaultPath(defaultProfile)
 	if err != nil {
 		t.Fatalf("DefaultPath() error = %v", err)
 	}
@@ -28,7 +28,7 @@ func TestDefaultPathFallsBackToUserConfigDir(t *testing.T) {
 	userConfigDir = func() (string, error) { return "/tmp/chilly-user-config", nil }
 	t.Cleanup(func() { userConfigDir = originalUserConfigDir })
 
-	path, err := DefaultPath()
+	path, err := DefaultPath(defaultProfile)
 	if err != nil {
 		t.Fatalf("DefaultPath() error = %v", err)
 	}
@@ -112,5 +112,55 @@ func TestNewStoreUsesDefaultPathWhenEmpty(t *testing.T) {
 	want := filepath.Join("/tmp/chilly-store-default", appDirName, configFileName)
 	if store.Path() != want {
 		t.Fatalf("Path() = %q, want %q", store.Path(), want)
+	}
+}
+
+func TestDefaultPathUsesProfilesSubdirectoryForNamedProfiles(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", "/tmp/chilly-xdg")
+
+	path, err := DefaultPath("dev")
+	if err != nil {
+		t.Fatalf("DefaultPath() error = %v", err)
+	}
+
+	want := filepath.Join("/tmp/chilly-xdg", appDirName, profilesDirName, "dev", configFileName)
+	if path != want {
+		t.Fatalf("path = %q, want %q", path, want)
+	}
+}
+
+func TestResolveProfileUsesDevDefaultForDevBuilds(t *testing.T) {
+	t.Setenv(envProfile, "")
+
+	profile, err := ResolveProfile("", true)
+	if err != nil {
+		t.Fatalf("ResolveProfile() error = %v", err)
+	}
+	if profile != devProfile {
+		t.Fatalf("profile = %q, want %q", profile, devProfile)
+	}
+}
+
+func TestResolveProfileUsesEnvironmentOverride(t *testing.T) {
+	t.Setenv(envProfile, "staging")
+
+	profile, err := ResolveProfile("", false)
+	if err != nil {
+		t.Fatalf("ResolveProfile() error = %v", err)
+	}
+	if profile != "staging" {
+		t.Fatalf("profile = %q, want %q", profile, "staging")
+	}
+}
+
+func TestNormalizeProfileRejectsUnsafeValues(t *testing.T) {
+	if _, err := NormalizeProfile("../prod"); err == nil {
+		t.Fatal("expected invalid profile error")
+	}
+}
+
+func TestDefaultProfileReturnsDefaultProfileName(t *testing.T) {
+	if DefaultProfile() != defaultProfile {
+		t.Fatalf("DefaultProfile() = %q, want %q", DefaultProfile(), defaultProfile)
 	}
 }

@@ -15,11 +15,12 @@ Use `chilly` as the local command-line entrypoint for chill.institute. Prefer `-
 4. Add `--output json` whenever the result will feed another tool or decision.
 5. Omit `--output json` when a human wants the built-in terminal summary from `whoami`, `search`, `list-top-movies`, `user settings get`, or `user indexers`.
 6. Use `settings get api-base-url` before assuming which hosted environment is active.
-7. Use `schema` or `--describe` when you need to inspect the local CLI contract before running a command.
-8. Use `version` and `self-update --check` when you need release provenance before proposing an upgrade.
-9. Use `--dry-run` on supported mutating commands when you need to preview a request safely.
-10. Use `--fields` on supported read commands when you only need a stable subset of the JSON response.
-11. Use `completion` when you need shell integration on a human workstation.
+7. Use `--profile <name>` when you need an isolated config path instead of reusing the default profile.
+8. Use `schema` or `--describe` when you need to inspect the local CLI contract before running a command.
+9. Use `version` and `self-update --check` when you need release provenance before proposing an upgrade.
+10. Use `--dry-run` on supported mutating commands when you need to preview a request safely.
+11. Use `--fields` on supported read commands when you only need a stable subset of the JSON response.
+12. Use `completion` when you need shell integration on a human workstation.
 
 ## Auth
 
@@ -55,6 +56,10 @@ The current fresh-config default is `https://api.binge.institute`. Existing loca
 
 - Show current API host:
   `chilly settings get api-base-url --output json`
+- Show current config path and profile:
+  `chilly settings path --output json`
+- Use an isolated dev profile:
+  `chilly --profile dev settings show --output json`
 - Point to staging:
   `chilly settings set api-base-url https://api.binge.institute`
 - Point to production:

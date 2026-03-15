@@ -106,6 +106,7 @@ chilly user settings get --fields showTopMovies,sortBy --output json
 
 # settings
 chilly settings path --output json
+chilly settings path --profile dev --output json
 chilly settings get api-base-url --output json
 chilly settings set api-base-url https://api.binge.institute
 chilly settings set api-base-url https://api.chill.institute
@@ -131,8 +132,16 @@ chilly user settings set --json '{"showTopMovies":true}' --dry-run --output json
 
 Default config path follows XDG:
 
-- `$XDG_CONFIG_HOME/chilly/config.json`
-- fallback: `~/.config/chilly/config.json`
+- default profile: `$XDG_CONFIG_HOME/chilly/config.json`
+- named profiles: `$XDG_CONFIG_HOME/chilly/profiles/<profile>/config.json`
+- fallback base dir: `~/.config`
+
+Profile behavior:
+
+- released binaries default to the `default` profile
+- dev builds default to the `dev` profile, so source runs do not reuse your production config by accident
+- override with `--profile <name>` or `CHILLY_PROFILE=<name>`
+- `--config <path>` still wins when you need a fully custom location
 
 Storage properties:
 
@@ -141,6 +150,12 @@ Storage properties:
 - writes are atomic via temp-file replace
 
 Fresh configs default to `https://api.binge.institute`. Point the CLI at `https://api.chill.institute` when you want production.
+
+Examples:
+
+- `chilly settings path --output json`
+- `chilly --profile dev settings show --output json`
+- `CHILLY_PROFILE=staging chilly auth login`
 
 `chilly auth login` starts a temporary loopback HTTP server on `127.0.0.1`, opens the API OAuth start URL, and waits for the browser callback to hand the issued auth token back to the CLI.
 
