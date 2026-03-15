@@ -55,21 +55,10 @@ chilly add-transfer --url "magnet:?xt=urn:btih:..." --dry-run --output json
 
 Released binaries use the `default` profile; dev builds default to `dev` so source runs do not reuse production config by accident.
 
-## Verify Release
-
-```bash
-VERSION="$(gh release view --repo chill-institute/cli --json tagName -q .tagName)"
-ARCHIVE="chilly_${VERSION#v}_darwin_arm64.tar.gz"
-
-gh release download "$VERSION" --repo chill-institute/cli --pattern "$ARCHIVE"
-gh attestation verify "$ARCHIVE" --repo chill-institute/cli
-```
-
-The install script verifies release checksums. Use GitHub attestation verification when you also want provenance from the release workflow.
-
 ## Docs
 
 - [Architecture](./docs/ARCHITECTURE.md)
+- [Security](./docs/SECURITY.md)
 
 ## Contributing
 
