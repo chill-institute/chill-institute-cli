@@ -177,15 +177,6 @@ func (app *appContext) callRPC(
 	return response, nil
 }
 
-func (app *appContext) writeResponseBody(body []byte) error {
-	normalized, err := normalizeJSON(body, app.opts.output, nil)
-	if err != nil {
-		return wrapInternalError("response_normalize_failed", "normalize response output", err)
-	}
-	_, err = fmt.Fprintln(app.stdout, string(normalized))
-	return wrapInternalError("stdout_write_failed", "write response output", err)
-}
-
 func (app *appContext) writeSelectedResponseBody(body []byte, selection *fieldSelection) error {
 	normalized, err := normalizeJSON(body, app.opts.output, selection)
 	if err != nil {

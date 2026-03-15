@@ -111,10 +111,14 @@ Dev builds default to a separate `dev` profile path unless `--profile`, `CHILLY_
 
 - Add transfer:
   `chilly add-transfer --url "magnet:?xt=..." --output json`
+- Get one transfer:
+  `chilly get-transfer 42 --output json`
 - Preview add-transfer without executing it:
   `chilly add-transfer --url "magnet:?xt=..." --dry-run --output json`
 - Same operation through the nested command:
   `chilly user transfer add --url "magnet:?xt=..." --output json`
+- Same read through the nested command:
+  `chilly user transfer get 42 --output json`
 - Preview the nested transfer command:
   `chilly user transfer add --url "magnet:?xt=..." --dry-run --output json`
 - Replace user settings with a full JSON payload:

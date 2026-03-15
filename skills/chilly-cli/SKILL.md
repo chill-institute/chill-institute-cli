@@ -81,6 +81,8 @@ The current fresh-config default is `https://api.binge.institute`. Existing loca
   `chilly list-top-movies --fields movies.title --output json`
 - Add transfer:
   `chilly add-transfer --url "magnet:?xt=..." --output json`
+- Read one transfer:
+  `chilly get-transfer 42 --output json`
 - Preview transfer request without executing it:
   `chilly add-transfer --url "magnet:?xt=..." --dry-run --output json`
 - Preview logout without clearing the saved token:

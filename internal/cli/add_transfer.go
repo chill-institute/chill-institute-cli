@@ -60,5 +60,5 @@ func runAddTransfer(app *appContext, commandID string, transferURL string, dryRu
 	if err != nil {
 		return fmt.Errorf("add transfer: %w", err)
 	}
-	return app.writeResponseBody(response.Body)
+	return app.writeSelectedResponseBodyWithRenderer(response.Body, nil, renderTransferPretty)
 }

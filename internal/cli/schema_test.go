@@ -11,6 +11,7 @@ func TestRootCommandIncludesSchemaTopLevelCommand(t *testing.T) {
 	command := NewRootCommand()
 	expected := map[string]bool{
 		"add-transfer":    true,
+		"get-transfer":    true,
 		"auth":            true,
 		"completion":      true,
 		"doctor":          true,
@@ -349,6 +350,33 @@ func TestSchemaCommandAddTransferReturnsDryRunMetadata(t *testing.T) {
 	}
 	if !foundDryRun {
 		t.Fatal("add-transfer metadata missing dry-run input")
+	}
+}
+
+func TestSchemaCommandGetTransferReturnsFieldMetadata(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	command := newRootCommand(&appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"schema", "command", "get-transfer", "--output", "json"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	var output schemaEntry
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if output.LinkedProcedure != procedureUserGetTransfer {
+		t.Fatalf("LinkedProcedure = %q, want %q", output.LinkedProcedure, procedureUserGetTransfer)
+	}
+	if !output.SupportsFields {
+		t.Fatal("get-transfer metadata should support fields")
 	}
 }
 

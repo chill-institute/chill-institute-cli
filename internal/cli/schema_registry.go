@@ -62,6 +62,19 @@ var commandSchemaRegistry = map[string]schemaEntry{
 			schemaInput{Name: "dry-run", Type: "boolean", Description: "validate input and print the request without executing it"},
 		),
 	},
+	"get-transfer": {
+		ID:              "get-transfer",
+		Kind:            "command",
+		Summary:         "Show one transfer through chill.institute",
+		AuthMode:        string(rpcAuthUser),
+		SupportsFields:  true,
+		LinkedProcedure: procedureUserGetTransfer,
+		Output:          schemaOutput{JSON: true, Human: true},
+		Inputs: appendInputs(
+			schemaInput{Name: "id", Type: "integer", Required: true, Description: "transfer id"},
+			schemaInput{Name: "fields", Type: "string", Description: "comma-separated field paths to include in the output"},
+		),
+	},
 	"auth": {
 		ID:       "auth",
 		Kind:     "command",
@@ -403,6 +416,20 @@ var commandSchemaRegistry = map[string]schemaEntry{
 			schemaInput{Name: "dry-run", Type: "boolean", Description: "validate input and print the request without executing it"},
 		),
 	},
+	"user transfer get": {
+		ID:              "user transfer get",
+		Kind:            "command",
+		Summary:         "Show one transfer through chill.institute",
+		AliasFor:        "get-transfer",
+		AuthMode:        string(rpcAuthUser),
+		SupportsFields:  true,
+		LinkedProcedure: procedureUserGetTransfer,
+		Output:          schemaOutput{JSON: true, Human: true},
+		Inputs: appendInputs(
+			schemaInput{Name: "id", Type: "integer", Required: true, Description: "transfer id"},
+			schemaInput{Name: "fields", Type: "string", Description: "comma-separated field paths to include in the output"},
+		),
+	},
 	"whoami": {
 		ID:              "whoami",
 		Kind:            "command",
@@ -444,6 +471,16 @@ var procedureSchemaRegistry = map[string]schemaEntry{
 		Summary:  "List user indexers",
 		AuthMode: string(rpcAuthUser),
 		Output:   schemaOutput{JSON: true},
+	},
+	procedureUserGetTransfer: {
+		ID:       procedureUserGetTransfer,
+		Kind:     "procedure",
+		Summary:  "Fetch one transfer",
+		AuthMode: string(rpcAuthUser),
+		Output:   schemaOutput{JSON: true},
+		Inputs: []schemaInput{
+			{Name: "id", Type: "integer", Required: true, Description: "transfer id"},
+		},
 	},
 	procedureUserGetDownloadFolder: {
 		ID:       procedureUserGetDownloadFolder,

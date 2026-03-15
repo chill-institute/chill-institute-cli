@@ -93,6 +93,7 @@ chilly schema command search --output json
 	command.AddCommand(newSearchCommand(app))
 	command.AddCommand(newListTopMoviesCommand(app))
 	command.AddCommand(newAddTransferCommand(app))
+	command.AddCommand(newGetTransferCommand(app))
 	command.AddCommand(newUserCommand(app))
 	command.AddCommand(newSchemaCommand(app))
 	command.AddCommand(newVersionCommand(app))
