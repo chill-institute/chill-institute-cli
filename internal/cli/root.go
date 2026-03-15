@@ -63,6 +63,7 @@ func newRootCommand(app *appContext) *cobra.Command {
 	command.PersistentFlags().Bool("describe", false, "print command metadata and exit")
 
 	command.AddCommand(newAuthCommand(app))
+	command.AddCommand(newCompletionCommand(app))
 	command.AddCommand(newWhoamiCommand(app))
 	command.AddCommand(newSettingsCommand(app))
 	command.AddCommand(newSearchCommand(app))

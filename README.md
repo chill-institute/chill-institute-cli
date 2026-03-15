@@ -41,6 +41,21 @@ chilly self-update
 chilly self-update --version v0.1.0
 ```
 
+## Shell Completion
+
+```bash
+# zsh
+chilly completion zsh > "${fpath[1]}/_chilly"
+
+# bash
+mkdir -p ~/.local/share/bash-completion/completions
+chilly completion bash > ~/.local/share/bash-completion/completions/chilly
+
+# fish
+mkdir -p ~/.config/fish/completions
+chilly completion fish > ~/.config/fish/completions/chilly.fish
+```
+
 ## Quickstart
 
 ```bash
@@ -81,6 +96,7 @@ chilly auth logout --dry-run --output json
 # discovery
 chilly schema command search --output json
 chilly search --describe --output json
+chilly completion zsh > "${fpath[1]}/_chilly"
 
 # read shaping
 chilly whoami --fields username,email --output json

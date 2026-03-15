@@ -46,6 +46,7 @@ Current command groups:
 | Command | Responsibility |
 |---------|----------------|
 | `auth` | login/logout and token acquisition |
+| `completion` | generate shell completion scripts |
 | `schema` | inspect local command and procedure metadata |
 | `whoami` | verify current auth state |
 | `settings` | inspect and update local CLI config |

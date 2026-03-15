@@ -19,6 +19,7 @@ Use `chilly` as the local command-line entrypoint for chill.institute. Prefer `-
 8. Use `version` and `self-update --check` when you need release provenance before proposing an upgrade.
 9. Use `--dry-run` on supported mutating commands when you need to preview a request safely.
 10. Use `--fields` on supported read commands when you only need a stable subset of the JSON response.
+11. Use `completion` when you need shell integration on a human workstation.
 
 ## Auth
 
@@ -47,6 +48,8 @@ The current fresh-config default is `https://api.binge.institute`. Existing loca
   `chilly version --output json`
 - Check whether a newer release exists:
   `chilly self-update --check --output json`
+- Generate zsh completions:
+  `chilly completion zsh`
 
 ## Common Commands
 

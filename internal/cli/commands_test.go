@@ -70,6 +70,30 @@ func TestAuthLoginWithTokenSavesConfig(t *testing.T) {
 	}
 }
 
+func TestCompletionCommandGeneratesZshScript(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	command := newRootCommand(&appContext{
+		opts:   &appOptions{output: outputPretty},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"completion", "zsh"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	rendered := stdout.String()
+	if !strings.Contains(rendered, "#compdef chilly") {
+		t.Fatalf("expected zsh completion header in %q", rendered)
+	}
+	if !strings.Contains(rendered, "_chilly") {
+		t.Fatalf("expected zsh completion function in %q", rendered)
+	}
+}
+
 func TestAuthLogoutClearsToken(t *testing.T) {
 	t.Parallel()
 
