@@ -256,6 +256,60 @@ func renderFolderPretty(value any) (string, bool, error) {
 	return strings.Join(lines, "\n"), true, nil
 }
 
+func renderTransferPretty(value any) (string, bool, error) {
+	payload, ok := value.(map[string]any)
+	if !ok {
+		return "", false, nil
+	}
+
+	transfer := payload
+	if nested, ok := payload["transfer"].(map[string]any); ok {
+		transfer = nested
+	}
+	if len(transfer) == 0 {
+		return "", false, nil
+	}
+
+	lines := []string{"Transfer"}
+	if status, ok := stringValue(payload, "status"); ok && payload["transfer"] != nil {
+		lines = append(lines, fmt.Sprintf("Request Status: %s", status))
+	}
+	if id := prettyValue(firstPresent(transfer, "id")); id != "" && id != "<nil>" {
+		lines = append(lines, fmt.Sprintf("ID: %s", id))
+	}
+	if name, ok := stringValue(transfer, "name"); ok {
+		lines = append(lines, fmt.Sprintf("Name: %s", name))
+	}
+	if status := prettyValue(firstPresent(transfer, "status")); status != "" && status != "<nil>" {
+		lines = append(lines, fmt.Sprintf("Status: %s", status))
+	}
+	if progress := prettyValue(firstPresent(transfer, "percentDone", "percent_done")); progress != "" && progress != "<nil>" {
+		lines = append(lines, fmt.Sprintf("Progress: %s%%", progress))
+	}
+	if finished, ok := transfer["isFinished"].(bool); ok {
+		lines = append(lines, fmt.Sprintf("Finished: %t", finished))
+	} else if finished, ok := transfer["is_finished"].(bool); ok {
+		lines = append(lines, fmt.Sprintf("Finished: %t", finished))
+	}
+	if message := firstString(transfer, "statusMessage", "status_message"); message != "" {
+		lines = append(lines, fmt.Sprintf("Message: %s", message))
+	}
+	if message := firstString(transfer, "errorMessage", "error_message"); message != "" {
+		lines = append(lines, fmt.Sprintf("Error: %s", message))
+	}
+	if fileURL := firstString(transfer, "fileUrl", "file_url"); fileURL != "" {
+		lines = append(lines, fmt.Sprintf("File URL: %s", fileURL))
+	}
+	if fileID := prettyValue(firstPresent(transfer, "fileId", "file_id")); fileID != "" && fileID != "<nil>" {
+		lines = append(lines, fmt.Sprintf("File ID: %s", fileID))
+	}
+	if eta := prettyValue(firstPresent(transfer, "estimatedTimeSeconds", "estimated_time_seconds")); eta != "" && eta != "<nil>" && eta != "0" {
+		lines = append(lines, fmt.Sprintf("ETA Seconds: %s", eta))
+	}
+
+	return strings.Join(lines, "\n"), true, nil
+}
+
 func renderDoctorPretty(value any) (string, bool, error) {
 	payload, ok := value.(map[string]any)
 	if !ok {
@@ -417,6 +471,15 @@ func prettyUserFileLines(file map[string]any) []string {
 		lines = append(lines, fmt.Sprintf("Shared: %t", shared))
 	}
 	return lines
+}
+
+func firstPresent(payload map[string]any, keys ...string) any {
+	for _, key := range keys {
+		if value, ok := payload[key]; ok {
+			return value
+		}
+	}
+	return nil
 }
 
 func min(left int, right int) int {

@@ -173,6 +173,27 @@ func newUserTransferCommand(app *appContext) *cobra.Command {
 	addCommand.Flags().BoolVar(&dryRun, "dry-run", false, "validate input and print the request without executing it")
 	transferCommand.AddCommand(addCommand)
 
+	var fields string
+	getCommand := &cobra.Command{
+		Use:   "get <id>",
+		Short: "Show one transfer through chill.institute",
+		Long:  "Alias for the top-level get-transfer command under the user namespace.",
+		Args:  allowDescribeArgs(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := normalizeTransferID(args[0])
+			if err != nil {
+				return err
+			}
+			selection, err := parseFieldSelection(fields)
+			if err != nil {
+				return err
+			}
+			return runUserRPCWithRenderer(app, procedureUserGetTransfer, map[string]any{"id": id}, selection, renderTransferPretty)
+		},
+	}
+	getCommand.Flags().StringVar(&fields, "fields", "", "comma-separated field paths to include in the output")
+	transferCommand.AddCommand(getCommand)
+
 	return transferCommand
 }
 
@@ -327,6 +348,22 @@ func normalizeFolderID(raw string) (int64, error) {
 	return value, nil
 }
 
+func normalizeTransferID(raw string) (int64, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return 0, usageError("missing_transfer_id", "transfer id is required")
+	}
+
+	value, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil {
+		return 0, usageError("invalid_transfer_id", "transfer id must be an integer")
+	}
+	if value <= 0 {
+		return 0, usageError("invalid_transfer_id", "transfer id must be positive")
+	}
+	return value, nil
+}
+
 func runUserRPCWithFields(app *appContext, procedure string, body any, selection *fieldSelection) error {
 	return runUserRPCWithRenderer(app, procedure, body, selection, nil)
 }
@@ -370,6 +407,8 @@ func prettyRendererForProcedure(procedure string) prettyRenderer {
 		return renderSearchPretty
 	case procedureUserGetTopMovies:
 		return renderTopMoviesPretty
+	case procedureUserAddTransfer, procedureUserGetTransfer:
+		return renderTransferPretty
 	default:
 		return nil
 	}
