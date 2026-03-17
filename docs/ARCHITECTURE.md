@@ -195,7 +195,11 @@ In default pretty mode, the core read commands render small human-oriented summa
 ## Guardrails And Release Flow
 
 - Local hooks live in `.githooks/`
+- Hook files are intentionally tiny executable launchers; the real hook logic lives in `mise.toml`
 - Shared quality tasks live in `mise.toml`
+- `mise run smoke` covers fast local CLI sanity checks
+- `mise run coverage:report` prints package coverage plus the lowest-covered functions
+- `mise run test:integration` is opt-in and uses `CHILLY_TEST_API_URL` plus `CHILLY_TEST_TOKEN` for real hosted API checks
 - CI runs `mise run verify`
 - Pushes to `main` run the release workflow
 - semantic-release decides the next version and tag

@@ -23,6 +23,7 @@ Security posture: the agent is not a trusted operator. Prefer commands that vali
 - If `chilly` is not on `PATH`, stop and help the user install the CLI before continuing.
 - Check `chilly settings get api-base-url --output json` before assuming which hosted environment is active.
 - Use `--profile <name>` or `--config <path>` when you need isolated local state.
+- For repo maintenance or local sanity checks, prefer `mise run smoke`, `mise run verify`, and `mise run coverage:report`.
 - Use `schema` or `--describe` when you need the current local contract before running a command.
 - Use `doctor` when auth, config path, profile, or environment state looks inconsistent.
 - Prefer top-level canonical commands like `search`, `whoami`, `list-top-movies`, and `add-transfer` over nested aliases.

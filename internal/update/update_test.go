@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -46,6 +47,18 @@ func TestArchiveNameRejectsUnsupportedTarget(t *testing.T) {
 
 	if _, err := ArchiveName("1.2.3", "plan9", "amd64"); err == nil {
 		t.Fatal("ArchiveName() error = nil, want unsupported os")
+	}
+}
+
+func TestNewClientDefaults(t *testing.T) {
+	t.Parallel()
+
+	client := NewClient(nil)
+	if client.baseURL != defaultAPIBase {
+		t.Fatalf("baseURL = %q, want %q", client.baseURL, defaultAPIBase)
+	}
+	if client.httpClient == nil || client.httpClient.Timeout == 0 {
+		t.Fatalf("httpClient = %#v, want default timeout", client.httpClient)
 	}
 }
 
@@ -200,6 +213,44 @@ func TestReplaceExecutable(t *testing.T) {
 	}
 }
 
+func TestReplaceExecutableUsesDefaultMode(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "chilly")
+	if err := os.WriteFile(path, []byte("old"), 0o700); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	if err := ReplaceExecutable(path, []byte("new"), 0); err != nil {
+		t.Fatalf("ReplaceExecutable() error = %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat() error = %v", err)
+	}
+	if info.Mode().Perm() != 0o755 {
+		t.Fatalf("perm = %o, want %o", info.Mode().Perm(), 0o755)
+	}
+}
+
+func TestReplaceExecutablePropagatesFilesystemFailures(t *testing.T) {
+	t.Parallel()
+
+	missingPath := filepath.Join(t.TempDir(), "missing", "chilly")
+	if err := ReplaceExecutable(missingPath, []byte("new"), 0o755); err == nil {
+		t.Fatal("ReplaceExecutable() error = nil, want create temp failure")
+	}
+
+	targetDir := filepath.Join(t.TempDir(), "chilly-dir")
+	if err := os.Mkdir(targetDir, 0o755); err != nil {
+		t.Fatalf("Mkdir() error = %v", err)
+	}
+	if err := ReplaceExecutable(targetDir, []byte("new"), 0o755); err == nil {
+		t.Fatal("ReplaceExecutable() error = nil, want replace failure")
+	}
+}
+
 func TestSameVersion(t *testing.T) {
 	t.Parallel()
 
@@ -299,6 +350,26 @@ func TestValidateDownloadURLRejectsUnsupportedScheme(t *testing.T) {
 	}
 }
 
+func TestValidateDownloadURLAcceptsAllowedHosts(t *testing.T) {
+	t.Parallel()
+
+	for _, rawURL := range []string{
+		"https://github.com/chill-institute/chill-institute-cli/releases/download/v1.2.3/chilly.tar.gz",
+		"https://objects.githubusercontent.com/archive",
+		"https://release-assets.githubusercontent.com/archive",
+		"https://github-releases.githubusercontent.com/archive",
+	} {
+		rawURL := rawURL
+		t.Run(rawURL, func(t *testing.T) {
+			t.Parallel()
+
+			if _, err := validateDownloadURL(rawURL); err != nil {
+				t.Fatalf("validateDownloadURL(%q) error = %v", rawURL, err)
+			}
+		})
+	}
+}
+
 func TestDownloadRejectsUnexpectedStatus(t *testing.T) {
 	t.Parallel()
 
@@ -312,6 +383,22 @@ func TestDownloadRejectsUnexpectedStatus(t *testing.T) {
 
 	_, err := client.Download(context.Background(), "https://github.com/chill-institute/chill-institute-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz")
 	if err == nil || !strings.Contains(err.Error(), "unexpected status 502") {
+		t.Fatalf("Download() error = %v", err)
+	}
+}
+
+func TestDownloadReadBodyError(t *testing.T) {
+	t.Parallel()
+
+	client := NewClient(&http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       errReadCloser{},
+			Header:     make(http.Header),
+		}, nil
+	})})
+
+	if _, err := client.Download(context.Background(), "https://github.com/chill-institute/chill-institute-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz"); err == nil || !strings.Contains(err.Error(), "read release asset") {
 		t.Fatalf("Download() error = %v", err)
 	}
 }
@@ -352,6 +439,43 @@ func TestFetchReleaseRejectsUnexpectedStatusAndInvalidJSON(t *testing.T) {
 	})
 }
 
+func TestFetchReleaseReadBodyError(t *testing.T) {
+	t.Parallel()
+
+	client := NewClient(&http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       errReadCloser{},
+			Header:     make(http.Header),
+		}, nil
+	})})
+
+	if _, err := client.Latest(context.Background()); err == nil || !strings.Contains(err.Error(), "read release metadata") {
+		t.Fatalf("Latest() error = %v", err)
+	}
+}
+
+func TestByTagRejectsInvalidVersion(t *testing.T) {
+	t.Parallel()
+
+	client := NewClient(&http.Client{})
+	if _, err := client.ByTag(context.Background(), "../v1.2.3"); err == nil {
+		t.Fatal("ByTag() error = nil, want invalid version")
+	}
+}
+
+func TestFetchReleasePropagatesTransportErrors(t *testing.T) {
+	t.Parallel()
+
+	client := NewClient(&http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return nil, errors.New("boom")
+	})})
+
+	if _, err := client.Latest(context.Background()); err == nil || !strings.Contains(err.Error(), "fetch release metadata") {
+		t.Fatalf("Latest() error = %v", err)
+	}
+}
+
 func TestExtractBinaryRejectsUnsupportedTarget(t *testing.T) {
 	t.Parallel()
 
@@ -388,6 +512,14 @@ func TestExtractTarGZBinaryRejectsMissingBinary(t *testing.T) {
 
 	if _, err := extractTarGZBinary(archive.Bytes()); err == nil {
 		t.Fatal("extractTarGZBinary() error = nil, want missing binary")
+	}
+}
+
+func TestExtractTarGZBinaryRejectsInvalidArchive(t *testing.T) {
+	t.Parallel()
+
+	if _, err := extractTarGZBinary([]byte("not-a-gzip")); err == nil {
+		t.Fatal("extractTarGZBinary() error = nil, want invalid archive")
 	}
 }
 
@@ -436,6 +568,14 @@ func TestExtractZipBinaryRejectsMissingBinary(t *testing.T) {
 	}
 }
 
+func TestExtractZipBinaryRejectsInvalidArchive(t *testing.T) {
+	t.Parallel()
+
+	if _, err := extractZipBinary([]byte("not-a-zip")); err == nil {
+		t.Fatal("extractZipBinary() error = nil, want invalid archive")
+	}
+}
+
 func TestReplaceExecutableValidatesInputs(t *testing.T) {
 	t.Parallel()
 
@@ -468,3 +608,11 @@ func binaryResponse(payload []byte) *http.Response {
 		Header:     make(http.Header),
 	}
 }
+
+type errReadCloser struct{}
+
+func (errReadCloser) Read([]byte) (int, error) {
+	return 0, errors.New("boom")
+}
+
+func (errReadCloser) Close() error { return nil }

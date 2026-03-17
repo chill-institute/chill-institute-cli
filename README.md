@@ -75,6 +75,7 @@ When `stdout` is not a TTY, `chilly` now defaults to compact JSON for command re
 
 - [Architecture](./docs/ARCHITECTURE.md)
 - [Security](./SECURITY.md)
+- [Contributing](./CONTRIBUTING.md)
 
 ## Contributing
 

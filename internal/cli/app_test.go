@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 	"sync"
@@ -202,6 +203,114 @@ func TestWithProgressWritesToStderrAndClears(t *testing.T) {
 	if !strings.Contains(rendered, "\r") {
 		t.Fatalf("stderr = %q, want carriage-return progress output", rendered)
 	}
+}
+
+func TestNormalizeJSONAndWriters(t *testing.T) {
+	t.Parallel()
+
+	normalized, err := normalizeJSON([]byte(" "), outputJSON, nil)
+	if err != nil {
+		t.Fatalf("normalizeJSON(empty) error = %v", err)
+	}
+	if string(normalized) != "{}" {
+		t.Fatalf("normalizeJSON(empty) = %q", normalized)
+	}
+
+	if _, err := normalizeJSON([]byte("{"), outputJSON, nil); err == nil {
+		t.Fatal("normalizeJSON(invalid) error = nil, want error")
+	}
+
+	stdout := &bytes.Buffer{}
+	app := &appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	}
+	if err := app.writeSelectedResponseBody([]byte(`{"user":{"name":"sample-user"}}`), mustFieldSelection(t, "user.name")); err != nil {
+		t.Fatalf("writeSelectedResponseBody() error = %v", err)
+	}
+	if strings.TrimSpace(stdout.String()) != `{"user":{"name":"sample-user"}}` {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+
+	stdout.Reset()
+	if err := app.writeJSONPayload(map[string]any{"status": "ok"}); err != nil {
+		t.Fatalf("writeJSONPayload() error = %v", err)
+	}
+	if strings.TrimSpace(stdout.String()) != `{"status":"ok"}` {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+
+	app.opts.output = outputPretty
+	stdout.Reset()
+	if err := app.writeAnyWithRenderer(map[string]any{"name": "sample-user"}, nil, func(value any) (string, bool, error) {
+		return "Name: sample-user", true, nil
+	}); err != nil {
+		t.Fatalf("writeAnyWithRenderer() error = %v", err)
+	}
+	if strings.TrimSpace(stdout.String()) != "Name: sample-user" {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestWriteSelectedResponseBodyWithRendererFallbackAndErrors(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	app := &appContext{
+		opts:   &appOptions{output: outputPretty},
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	}
+
+	if err := app.writeSelectedResponseBodyWithRenderer([]byte(`{"status":"ok"}`), nil, func(value any) (string, bool, error) {
+		return "", false, nil
+	}); err != nil {
+		t.Fatalf("writeSelectedResponseBodyWithRenderer(fallback) error = %v", err)
+	}
+	if !strings.Contains(stdout.String(), `"status": "ok"`) {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+
+	if err := app.writeSelectedResponseBodyWithRenderer([]byte(`{"status":"ok"}`), nil, func(value any) (string, bool, error) {
+		return "", false, errors.New("boom")
+	}); err == nil {
+		t.Fatal("writeSelectedResponseBodyWithRenderer(error) error = nil, want error")
+	}
+}
+
+func TestWithProgressNoopPaths(t *testing.T) {
+	t.Parallel()
+
+	app := &appContext{
+		opts:       &appOptions{output: outputJSON},
+		stderr:     &bytes.Buffer{},
+		isTerminal: func(io.Writer) bool { return true },
+	}
+	if err := app.withProgress(nil); err != nil {
+		t.Fatalf("withProgress(nil) error = %v", err)
+	}
+
+	called := false
+	if err := app.withProgress(func() error {
+		called = true
+		return nil
+	}); err != nil {
+		t.Fatalf("withProgress(no-progress) error = %v", err)
+	}
+	if !called {
+		t.Fatal("withProgress(no-progress) did not call function")
+	}
+}
+
+func mustFieldSelection(t *testing.T, value string) *fieldSelection {
+	t.Helper()
+
+	selection, err := parseFieldSelection(value)
+	if err != nil {
+		t.Fatalf("parseFieldSelection() error = %v", err)
+	}
+	return selection
 }
 
 type fakeProgressTicker struct {

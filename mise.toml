@@ -85,6 +85,17 @@ printf '%s\n' "$staged_go_files" | while IFS= read -r file; do
 done
 """
 
+[tasks."hooks:pre-commit"]
+description = "Hook entrypoint for formatting staged Go files"
+run = "mise run fmt:staged"
+
+[tasks."hooks:pre-push"]
+description = "Hook entrypoint for full repo verification before push"
+run = """
+printf '==> running CLI verify before push\n'
+mise run verify
+"""
+
 [tasks.lint]
 description = "Run static analysis"
 run = "go tool golangci-lint run ./..."
@@ -97,10 +108,33 @@ run = "go mod tidy -diff"
 description = "Run CLI unit tests"
 run = "go test ./..."
 
+[tasks."test:integration"]
+description = "Run opt-in live integration tests against a real API surface"
+run = """
+if [ -z "${CHILLY_TEST_API_URL:-}" ] || [ -z "${CHILLY_TEST_TOKEN:-}" ]; then
+  printf 'CHILLY_TEST_API_URL and CHILLY_TEST_TOKEN are required for integration tests\n' >&2
+  exit 1
+fi
+go test -count=1 -tags=integration ./internal/cli -run '^TestLive'
+"""
+
+[tasks.smoke]
+description = "Run fast local CLI smoke checks"
+run = """
+tmpdir="$(mktemp -d)"
+config="$tmpdir/config.json"
+trap 'rm -rf "$tmpdir"' EXIT
+
+go run ./cmd/chilly version --output json >/dev/null
+go run ./cmd/chilly --config "$config" doctor --offline --output json >/dev/null
+go run ./cmd/chilly schema command search --output json >/dev/null
+printf '{"url":"magnet:?xt=urn:btih:test"}' | go run ./cmd/chilly --config "$config" add-transfer --json @- --dry-run --output json >/dev/null
+"""
+
 [tasks.coverage]
 description = "Run tests with coverage threshold"
 run = """
-threshold="${MISE_COVERAGE_THRESHOLD:-80}"
+threshold="${MISE_COVERAGE_THRESHOLD:-85}"
 
 printf '==> running Go tests with coverage (threshold: %s%%)\n' "$threshold"
 go test ./... -covermode=atomic -coverprofile=coverage.out
@@ -124,6 +158,21 @@ awk -v total="$total_coverage" -v threshold="$threshold" '
     }
   }
 '
+"""
+
+[tasks."coverage:report"]
+description = "Show package coverage and the lowest-covered functions"
+run = """
+if [ ! -f coverage.out ]; then
+  go test ./... -covermode=atomic -coverprofile=coverage.out
+fi
+
+printf '==> package coverage\n'
+go test ./... -covermode=atomic -coverprofile=/tmp/chilly-cover-report.out >/tmp/chilly-cover-report.log
+tail -n 20 /tmp/chilly-cover-report.log
+
+printf '\n==> lowest-covered functions\n'
+go tool cover -func=coverage.out | sort -k3,3n | sed -n '1,25p'
 """
 
 [tasks.security]

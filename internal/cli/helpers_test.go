@@ -124,3 +124,37 @@ func TestSettingsValidationHelpers(t *testing.T) {
 		t.Fatal("normalizeSettingsKey(missing) error = nil, want error")
 	}
 }
+
+func TestNormalizeIndexerID(t *testing.T) {
+	t.Parallel()
+
+	if got, err := normalizeIndexerID(" yts "); err != nil || got != "yts" {
+		t.Fatalf("normalizeIndexerID() = %q, %v", got, err)
+	}
+
+	for _, raw := range []string{"", "bad\x00id", "../yts", "bad/id", "bad?id", "bad%2Fyts"} {
+		raw := raw
+		t.Run(raw, func(t *testing.T) {
+			t.Parallel()
+
+			if _, err := normalizeIndexerID(raw); err == nil {
+				t.Fatalf("normalizeIndexerID(%q) error = nil, want error", raw)
+			}
+		})
+	}
+}
+
+func TestNormalizeTransferURL(t *testing.T) {
+	t.Parallel()
+
+	if got, err := normalizeTransferURL(" magnet:?xt=urn:btih:test "); err != nil || got != "magnet:?xt=urn:btih:test" {
+		t.Fatalf("normalizeTransferURL() = %q, %v", got, err)
+	}
+
+	if _, err := normalizeTransferURL(""); err == nil {
+		t.Fatal("normalizeTransferURL(empty) error = nil, want error")
+	}
+	if _, err := normalizeTransferURL("bad\x00url"); err == nil {
+		t.Fatal("normalizeTransferURL(control) error = nil, want error")
+	}
+}

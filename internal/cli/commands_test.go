@@ -94,6 +94,65 @@ func TestCompletionCommandGeneratesZshScript(t *testing.T) {
 	}
 }
 
+func TestCompletionCommandSupportsFishAndRejectsUnknownShells(t *testing.T) {
+	t.Parallel()
+
+	t.Run("fish", func(t *testing.T) {
+		t.Parallel()
+
+		stdout := &bytes.Buffer{}
+		command := newRootCommand(&appContext{
+			opts:   &appOptions{output: outputPretty},
+			stdin:  strings.NewReader(""),
+			stdout: stdout,
+			stderr: &bytes.Buffer{},
+		})
+		command.SetArgs([]string{"completion", "fish"})
+		if err := command.Execute(); err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+		if !strings.Contains(stdout.String(), "complete -c chilly") {
+			t.Fatalf("expected fish completion content in %q", stdout.String())
+		}
+	})
+
+	t.Run("unsupported", func(t *testing.T) {
+		t.Parallel()
+
+		command := newRootCommand(&appContext{
+			opts:   &appOptions{output: outputPretty},
+			stdin:  strings.NewReader(""),
+			stdout: &bytes.Buffer{},
+			stderr: &bytes.Buffer{},
+		})
+		command.SetArgs([]string{"completion", "tcsh"})
+		if err := command.Execute(); err == nil {
+			t.Fatal("Execute() error = nil, want unsupported shell error")
+		}
+	})
+}
+
+func TestGetTransferHelpIncludesFieldsExample(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	command := newRootCommand(&appContext{
+		opts:   &appOptions{output: outputPretty},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"get-transfer", "--help"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	rendered := stdout.String()
+	if !strings.Contains(rendered, "get-transfer 42 --fields") {
+		t.Fatalf("expected get-transfer fields example in %q", rendered)
+	}
+}
+
 func TestRootHelpIncludesExamples(t *testing.T) {
 	t.Parallel()
 
@@ -273,6 +332,53 @@ func TestSearchCommandUsesStoredToken(t *testing.T) {
 	}
 	if output["query"] != "blade runner" {
 		t.Fatalf("output query = %v", output["query"])
+	}
+}
+
+func TestGetTransferCommandUsesStoredToken(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/v4/chill.v4.UserService/GetTransfer" {
+			t.Fatalf("path = %q", request.URL.Path)
+		}
+		if got := request.Header.Get("Authorization"); got != "Bearer saved-token" {
+			t.Fatalf("Authorization = %q", got)
+		}
+		var payload map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode payload: %v", err)
+		}
+		if payload["id"] != float64(42) {
+			t.Fatalf("id = %v", payload["id"])
+		}
+		_, _ = writer.Write([]byte(`{"transfer":{"id":"42","status":"COMPLETED"}}`))
+	}))
+	defer server.Close()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	store, err := config.NewStore(configPath)
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+	if err := store.Save(config.Config{APIBaseURL: server.URL, AuthToken: "saved-token"}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	command := newGetTransferCommand(&appContext{
+		opts:   &appOptions{configPath: configPath, output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"42"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if !strings.Contains(stdout.String(), `"status":"COMPLETED"`) {
+		t.Fatalf("stdout = %q", stdout.String())
 	}
 }
 
@@ -692,6 +798,98 @@ func TestDoctorChecksStoredAuth(t *testing.T) {
 	if userPayload["username"] != "dunefan" {
 		t.Fatalf("auth.user.username = %v, want %q", userPayload["username"], "dunefan")
 	}
+}
+
+func TestDoctorHandlesInvalidAndErroredAuthChecks(t *testing.T) {
+	t.Parallel()
+
+	t.Run("invalid auth", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			writer.Header().Set("X-Request-Id", "req-invalid")
+			writer.WriteHeader(http.StatusUnauthorized)
+			_, _ = writer.Write([]byte(`{"code":"invalid_auth_token","message":"expired"}`))
+		}))
+		defer server.Close()
+
+		configPath := filepath.Join(t.TempDir(), "config.json")
+		store, err := config.NewStore(configPath)
+		if err != nil {
+			t.Fatalf("NewStore() error = %v", err)
+		}
+		if err := store.Save(config.Config{APIBaseURL: server.URL, AuthToken: "saved-token"}); err != nil {
+			t.Fatalf("Save() error = %v", err)
+		}
+
+		stdout := &bytes.Buffer{}
+		command := newDoctorCommand(&appContext{
+			opts:   &appOptions{configPath: configPath, output: outputJSON},
+			stdin:  strings.NewReader(""),
+			stdout: stdout,
+			stderr: &bytes.Buffer{},
+		})
+		command.SetArgs(nil)
+		if err := command.Execute(); err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+
+		var output map[string]any
+		if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+			t.Fatalf("output json decode error: %v", err)
+		}
+		if output["status"] != "warn" {
+			t.Fatalf("status = %v, want warn", output["status"])
+		}
+		authPayload := output["auth"].(map[string]any)
+		if authPayload["status"] != "invalid" || authPayload["request_id"] != "req-invalid" {
+			t.Fatalf("auth = %#v", authPayload)
+		}
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			writer.Header().Set("X-Request-Id", "req-error")
+			writer.WriteHeader(http.StatusInternalServerError)
+			_, _ = writer.Write([]byte(`{"code":"backend_error","message":"boom"}`))
+		}))
+		defer server.Close()
+
+		configPath := filepath.Join(t.TempDir(), "config.json")
+		store, err := config.NewStore(configPath)
+		if err != nil {
+			t.Fatalf("NewStore() error = %v", err)
+		}
+		if err := store.Save(config.Config{APIBaseURL: server.URL, AuthToken: "saved-token"}); err != nil {
+			t.Fatalf("Save() error = %v", err)
+		}
+
+		stdout := &bytes.Buffer{}
+		command := newDoctorCommand(&appContext{
+			opts:   &appOptions{configPath: configPath, output: outputJSON},
+			stdin:  strings.NewReader(""),
+			stdout: stdout,
+			stderr: &bytes.Buffer{},
+		})
+		command.SetArgs(nil)
+		if err := command.Execute(); err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+
+		var output map[string]any
+		if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+			t.Fatalf("output json decode error: %v", err)
+		}
+		if output["status"] != "error" {
+			t.Fatalf("status = %v, want error", output["status"])
+		}
+		authPayload := output["auth"].(map[string]any)
+		if authPayload["status"] != "error" || authPayload["request_id"] != "req-error" {
+			t.Fatalf("auth = %#v", authPayload)
+		}
+	})
 }
 
 func TestListTopMoviesUsesStoredToken(t *testing.T) {
