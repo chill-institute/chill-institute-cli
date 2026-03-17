@@ -10,7 +10,13 @@ while IFS= read -r file; do
   if [[ -n "$file" ]]; then
     go_files+=("$file")
   fi
-done < <(rg --files -g '*.go')
+done < <(
+  if command -v rg >/dev/null 2>&1; then
+    rg --files -g '*.go'
+  else
+    find . -type f -name '*.go' -not -path './.git/*' | sed 's#^\./##' | sort
+  fi
+)
 
 if [[ "${#go_files[@]}" -eq 0 ]]; then
   exit 0

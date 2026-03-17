@@ -43,6 +43,13 @@ func runSearch(app *appContext, query string, indexerID string, fields string) e
 	if err != nil {
 		return err
 	}
+	normalizedIndexerID := ""
+	if trimmedIndexer := strings.TrimSpace(indexerID); trimmedIndexer != "" {
+		normalizedIndexerID, err = normalizeIndexerID(trimmedIndexer)
+		if err != nil {
+			return err
+		}
+	}
 
 	cfg, err := app.loadConfig()
 	if err != nil {
@@ -54,11 +61,7 @@ func runSearch(app *appContext, query string, indexerID string, fields string) e
 	}
 
 	payload := map[string]any{"query": trimmedQuery}
-	if trimmedIndexer := strings.TrimSpace(indexerID); trimmedIndexer != "" {
-		normalizedIndexerID, err := normalizeIndexerID(trimmedIndexer)
-		if err != nil {
-			return err
-		}
+	if normalizedIndexerID != "" {
 		payload["indexer_id"] = normalizedIndexerID
 	}
 
