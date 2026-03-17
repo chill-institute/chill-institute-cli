@@ -1,136 +1,155 @@
 ---
 name: chilly-cli
-description: Use `chilly` to interact with chill.institute from the terminal. Trigger this skill when an agent needs to authenticate, inspect the current user, search, list top movies, add a transfer, read or update user settings, or switch between hosted API environments with the local CLI. Covers the safest command patterns, JSON output usage, and the current auth flow.
+description: Use `chilly` to operate chill.institute from the terminal. Trigger this skill when an agent needs to authenticate, inspect CLI state, query user data, search indexers, manage transfers, change user or local settings, or inspect the current command contract. Prefer safe canonical command patterns and JSON output for automation.
 ---
 
 # Chilly CLI
 
-Use `chilly` as the local command-line entrypoint for chill.institute, and prefer `--output json` for any agent workflow that will parse or transform results.
+Use `chilly` as the local CLI entrypoint for chill.institute. For agent workflows, default to `--output json` and parse `stdout` only.
 
-## Quick Start
+## Defaults
 
-1. Assume `chilly` is installed and available on `PATH`.
-2. Use direct binary commands such as `chilly whoami --output json`.
-3. Fall back to `go run ./cmd/chilly ...` only when working from source in a maintainer checkout.
-4. Add `--output json` whenever the result will feed another tool or decision.
-5. Omit `--output json` when a human wants the built-in terminal summary from `whoami`, `search`, `list-top-movies`, `user settings get`, or `user indexers`.
-6. Use `settings get api-base-url` before assuming which hosted environment is active.
-7. Use `--profile <name>` when you need an isolated config path instead of reusing the default profile.
-8. Use `doctor` before debugging auth, profile, config path, or environment mismatches.
-9. Use `schema` or `--describe` when you need to inspect the local CLI contract before running a command.
-10. Use `version` and `self-update --check` when you need release provenance before proposing an upgrade.
-11. Use `--dry-run` on supported mutating commands when you need to preview a request safely.
-12. Use `--fields` on supported read commands when you only need a stable subset of the JSON response.
-13. Use `completion` when you need shell integration on a human workstation.
-14. Prefer this indexer workflow for agents: `chilly user indexers --output json`, pick a healthy indexer, then run `chilly search --indexer-id <id>` one indexer at a time.
+- Use the installed `chilly` binary directly.
+- If `chilly` is not on `PATH`, stop and help the user install the CLI before continuing.
+- Check `chilly settings get api-base-url --output json` before assuming which hosted environment is active.
+- Use `--profile <name>` or `--config <path>` when you need isolated local state.
+- Use `schema` or `--describe` when you need the current local contract before running a command.
+- Use `doctor` when auth, config path, profile, or environment state looks inconsistent.
+- Prefer top-level canonical commands like `search`, `whoami`, `list-top-movies`, and `add-transfer` over nested aliases.
+- Use `--fields` when a read command supports it and you only need a stable subset of the payload.
+- Use `--dry-run` on supported mutating commands when you need a safe preview.
+- Omit `--output json` only when a human explicitly wants the built-in terminal summary.
 
 ## Auth
 
-- Default interactive login:
-  `chilly auth login`
-- Print the login URL without auto-opening a browser:
-  `chilly auth login --no-browser`
-- If the browser is on another machine, open this page in a signed-in browser and copy the token:
-  `https://chill.institute/auth/cli-token`
-- Store an existing token directly:
-  `chilly auth login --token <token>`
-- Verify the current login:
-  `chilly whoami --output json`
+- Interactive login: `chilly auth login`
+- Print the login URL instead of auto-opening a browser: `chilly auth login --no-browser`
+- Store an existing token directly: `chilly auth login --token <token>`
+- Verify the current login: `chilly whoami --output json`
 
-The current fresh-config default is `https://api.chill.institute`. Existing local configs may already point somewhere else.
+If the browser is on another machine, open [https://chill.institute/auth/cli-token](https://chill.institute/auth/cli-token) in a signed-in browser and copy the token.
 
-## Discovery
+## Core Workflows
 
-- List local command and procedure metadata:
-  `chilly schema --output json`
-- Show one command schema:
-  `chilly schema command search --output json`
-- Show one procedure schema:
-  `chilly schema procedure chill.v4.UserService/Search --output json`
-- Describe a command without executing it:
-  `chilly search --describe --output json`
-- Show the installed version quickly:
-  `chilly version`
-- Show installed build metadata:
-  `chilly version --output json`
-- Check whether a newer published release exists:
-  `chilly self-update --check --output json`
-- Generate zsh completions:
-  `chilly completion zsh`
+### Inspect The CLI Contract
 
-## Common Commands
+- List all command and procedure metadata: `chilly schema --output json`
+- Inspect one command: `chilly schema command search --output json`
+- Inspect one procedure: `chilly schema procedure chill.v4.UserService/Search --output json`
+- Describe a command without executing it: `chilly search --describe --output json`
 
-- Show current API host:
-  `chilly settings get api-base-url --output json`
-- Show current config path and profile:
-  `chilly settings path --output json`
-- Use an isolated dev profile:
-  `chilly --profile dev settings show --output json`
-- Run full local diagnostics:
-  `chilly doctor --output json`
-- Point to production:
-  `chilly settings set api-base-url https://api.chill.institute`
-- Preview an API host change without saving it:
-  `chilly settings set api-base-url https://api.chill.institute --dry-run --output json`
-- Search:
-  `chilly search --query "dune" --output json`
-- Search one indexer at a time:
-  `chilly search --query "dune" --indexer-id yts --output json`
-- Search with a smaller response:
-  `chilly search --query "dune" --fields results.title --output json`
-- Inspect indexers before searching:
-  `chilly user indexers --output json`
-- List top movies:
-  `chilly list-top-movies --output json`
-- List only movie titles:
-  `chilly list-top-movies --fields movies.title --output json`
-- Add transfer:
-  `chilly add-transfer --url "magnet:?xt=..." --output json`
-- Read one transfer:
-  `chilly get-transfer 42 --output json`
-- Check transfer status and file fields directly:
-  `chilly get-transfer 42 --fields transfer.status,transfer.statusMessage,transfer.percentDone,transfer.fileId,transfer.fileUrl --output json`
-- Preview transfer request without executing it:
-  `chilly add-transfer --url "magnet:?xt=..." --dry-run --output json`
-- Preview logout without clearing the saved token:
-  `chilly auth logout --dry-run --output json`
-- Read user settings:
-  `chilly user settings get --output json`
-- Read only selected settings:
-  `chilly user settings get --fields showTopMovies,sortBy --output json`
-- Patch one setting:
-  `chilly user settings set show-top-movies true --output json`
-- Preview one patched setting:
-  `chilly user settings set sort-by title --dry-run --output json`
-- Show the active download folder:
-  `chilly user download-folder --output json`
-- Preview a download folder change:
-  `chilly user download-folder set 42 --dry-run --output json`
-- Preview clearing the download folder:
-  `chilly user download-folder clear --dry-run --output json`
-- Inspect one folder by id:
-  `chilly user folder get 0 --output json`
-- Preview full user settings update:
-  `chilly user settings set --json '{"showTopMovies":true}' --dry-run --output json`
-- Show the installed version:
-  `chilly version`
-- Show build metadata:
-  `chilly version --output json`
+### Inspect Environment And Auth
 
-Read `references/commands.md` for a fuller command cookbook and current gotchas.
+- Show current API host: `chilly settings get api-base-url --output json`
+- Show current config path and profile: `chilly settings path --output json`
+- Run full local diagnostics: `chilly doctor --output json`
+- Verify the active user: `chilly whoami --output json`
 
-## Safety Rules
+### Search Safely
+
+- Start with `chilly user indexers --output json`.
+- Choose a suitable indexer using `tags` and any available health or status signals.
+- Run one scoped search at a time, for example: `chilly search --query "dune" --indexer-id yts --output json`
+- Use `--fields` when you only need a subset, for example: `chilly search --query "dune" --fields results.title --output json`
+
+### Mutate Safely
+
+- Preview supported mutations first, for example: `chilly add-transfer --url "magnet:?xt=..." --dry-run --output json`
+- Execute the mutation with the same canonical command.
+- After `add-transfer`, use `chilly get-transfer <id> --output json` to read real hosted transfer state.
+- Prefer `chilly user settings set <field> <value> --output json` for routine settings changes.
+- Use `chilly user settings set --json '<payload>' --output json` only for full settings payload updates.
+
+## Command Patterns
+
+### Environment Discovery
+
+- Full local diagnostics: `chilly doctor --output json`
+- Narrow diagnostics to specific fields: `chilly doctor --fields auth.status,config.profile --output json`
+- Current API host: `chilly settings get api-base-url --output json`
+- Full local config: `chilly settings show --output json`
+- Config file path: `chilly settings path --output json`
+- Config file path for an isolated profile: `chilly settings path --profile dev --output json`
+
+### Schema And Describe
+
+- List all known command and procedure metadata: `chilly schema --output json`
+- Inspect one command: `chilly schema command search --output json`
+- Inspect one nested command: `chilly schema command "settings get" --output json`
+- Inspect one procedure: `chilly schema procedure chill.v4.UserService/Search --output json`
+- Describe a command without executing it: `chilly search --describe --output json`
+
+### Version And Update
+
+- Show the installed version: `chilly version`
+- Show build metadata: `chilly version --output json`
+- Check whether a newer release exists: `chilly self-update --check --output json`
+- Install the latest release over the current binary: `chilly self-update`
+- Install a specific release: `chilly self-update --version v0.1.0`
+
+### Shell Completion
+
+- Generate zsh completions: `chilly completion zsh`
+- Generate bash completions: `chilly completion bash`
+- Generate fish completions: `chilly completion fish`
+
+### Authentication
+
+- Interactive browser-assisted login: `chilly auth login`
+- Manual browser opening: `chilly auth login --no-browser`
+- Existing token: `chilly auth login --token <token>`
+- Logout: `chilly auth logout --output json`
+- Preview logout without clearing the saved token: `chilly auth logout --dry-run --output json`
+- Verify current auth: `chilly whoami --output json`
+
+### Read Commands
+
+- Search with the built-in terminal summary: `chilly search --query "blade runner"`
+- Search as JSON: `chilly search --query "blade runner" --output json`
+- Search with field selection: `chilly search --query "blade runner" --fields results.title,results.magnetLink --output json`
+- Search with a specific indexer: `chilly search --query "blade runner" --indexer-id <id> --output json`
+- User profile summary: `chilly whoami`
+- User profile as JSON: `chilly whoami --output json`
+- User profile with selected fields: `chilly whoami --fields username,email --output json`
+- User indexers: `chilly user indexers --output json`
+- Top movies summary: `chilly list-top-movies`
+- Top movies as JSON: `chilly list-top-movies --output json`
+- Top movies with selected fields: `chilly list-top-movies --fields movies.title --output json`
+- User settings: `chilly user settings get --output json`
+- User settings with selected fields: `chilly user settings get --fields showTopMovies,sortBy --output json`
+- Current download folder: `chilly user download-folder --output json`
+- Preview setting the download folder: `chilly user download-folder set 42 --dry-run --output json`
+- Preview clearing the download folder: `chilly user download-folder clear --dry-run --output json`
+- Inspect one folder: `chilly user folder get 0 --output json`
+
+### Mutating Commands
+
+- Add transfer: `chilly add-transfer --url "magnet:?xt=..." --output json`
+- Get one transfer: `chilly get-transfer 42 --output json`
+- Get transfer status and file fields: `chilly get-transfer 42 --fields transfer.status,transfer.statusMessage,transfer.percentDone,transfer.fileId,transfer.fileUrl --output json`
+- Preview add-transfer without executing it: `chilly add-transfer --url "magnet:?xt=..." --dry-run --output json`
+- Replace user settings with a full JSON payload: `chilly user settings set --json '{"showTopMovies":true}' --output json`
+- Patch one setting: `chilly user settings set show-top-movies true --output json`
+- Patch enum settings with friendly values: `chilly user settings set sort-by title --output json`
+- Preview a one-field settings patch: `chilly user settings set sort-by title --dry-run --output json`
+- Preview the full settings payload: `chilly user settings set --json '{"showTopMovies":true}' --dry-run --output json`
+- Preview a local CLI settings change: `chilly settings set api-base-url https://api.chill.institute --dry-run --output json`
+
+### Aliases
+
+- Nested transfer add alias: `chilly user transfer add --url "magnet:?xt=..." --output json`
+- Nested transfer get alias: `chilly user transfer get 42 --output json`
+- Nested transfer dry-run alias: `chilly user transfer add --url "magnet:?xt=..." --dry-run --output json`
+
+## Output And Safety
 
 - Prefer `--output json` for automation.
-- Use `status` and `tags` from `chilly user indexers --output json` to choose the next scoped search.
-- After `add-transfer`, use `get-transfer` to read the hosted transfer status instead of inferring completion locally.
-- Prefer `--fields` when a command supports it and you only need a subset of the payload.
-- Check the active API base URL before mutating anything.
-- Use `doctor` when auth, config path, or profile state looks inconsistent.
-- Prefer `--dry-run` before a mutation when you only need the request shape or want a safe preview.
-- Prefer the single-field `user settings set <field> <value>` form for routine settings changes, and keep `--json` for full replacement.
+- Prefer this flow for agent search work: `chilly user indexers --output json`, choose a suitable indexer using `tags` and any available health or status signals, then run one scoped `chilly search --indexer-id <id>` request at a time.
+- After `add-transfer`, prefer `get-transfer` for real hosted transfer state instead of inferring it from the add response alone.
+- Prefer top-level canonical commands when both top-level and `user ...` forms exist.
 - Expect prompts and browser-login hints on `stderr`; parse only `stdout`.
 - Expect transient loading indicators on `stderr` in pretty mode for network-backed commands.
+- Human-facing notices may appear on `stderr`.
+- Command data is intended to be parsed from `stdout`.
 - Expect failures in `--output json` mode to appear as a single JSON envelope on `stderr`.
-- Use `whoami` after auth changes when you need a positive confirmation that the token works.
-- Prefer top-level commands like `search`, `whoami`, `list-top-movies`, and `add-transfer`; use nested `user ...` aliases only when namespacing helps.
+- Use `whoami` after auth changes when you need positive confirmation that the token works.
