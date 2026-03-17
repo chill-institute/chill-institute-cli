@@ -1,6 +1,6 @@
 ---
 name: chilly-cli
-description: Use `chilly` to operate chill.institute from the terminal. Trigger this skill when an agent needs to authenticate, inspect CLI state, query user data, search indexers, manage transfers, change user or local settings, or inspect the current command contract. Prefer safe canonical command patterns and JSON output for automation.
+description: Use `chilly` to operate chill.institute from the terminal. Trigger this skill for requests about chilly, chill institute, or putio/put.io workflows when an agent needs to authenticate, inspect CLI state, query user data, search indexers, manage transfers or downloads, change user or local settings, or inspect the current command contract. Prefer safe canonical command patterns and JSON output for automation.
 ---
 
 # Chilly CLI
