@@ -24,9 +24,11 @@ For command-surface changes, also run:
 ## Conventions
 
 - Prefer machine-readable contracts first. New behavior should have a stable JSON story before nicer human formatting.
+- When `stdout` is not a TTY and `--output` is not set explicitly, command results default to JSON. Keep that contract stable for agent workflows.
+- Treat the agent as an untrusted operator. New surfaces should validate opaque IDs and base URLs locally before they reach the network or filesystem.
 - Keep `stdout` for command results and `stderr` for prompts, progress, warnings, and recovery hints.
 - Keep auth requirements, flags, and schema/describe surfaces explicit.
-- If a command surface, auth flow, default, or output contract changes, update the user-facing `chilly-cli` skill in [skills/](./skills/) in the same pass.
+- If a command surface, auth flow, default, or output contract changes, update the user-facing chilly skill library in [skills/](./skills/) in the same pass.
 
 ## Read More
 

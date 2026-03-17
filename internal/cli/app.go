@@ -28,6 +28,7 @@ type appOptions struct {
 	profile    string
 	apiURL     string
 	output     string
+	outputSet  bool
 }
 
 type appContext struct {
@@ -127,7 +128,11 @@ func (app *appContext) loadConfig() (config.Config, error) {
 		return config.Config{}, wrapInternalError("config_load_failed", "load config", err)
 	}
 	if override := strings.TrimSpace(app.opts.apiURL); override != "" {
-		cfg.APIBaseURL = override
+		normalizedOverride, err := normalizeAPIBaseURL(override)
+		if err != nil {
+			return config.Config{}, err
+		}
+		cfg.APIBaseURL = normalizedOverride
 	}
 	return cfg.Normalized(), nil
 }

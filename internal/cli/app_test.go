@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"strings"
 	"sync"
@@ -109,6 +110,64 @@ func TestShouldShowProgressOnlyForPrettyTerminalOutput(t *testing.T) {
 	app.isTerminal = func(io.Writer) bool { return false }
 	if app.shouldShowProgress() {
 		t.Fatal("did not expect non-terminal output to enable progress")
+	}
+}
+
+func TestReadJSONFlagSupportsStdin(t *testing.T) {
+	t.Parallel()
+
+	app := &appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader("{\"url\":\"magnet:?xt=urn:btih:test\"}\n"),
+		stdout: &strings.Builder{},
+		stderr: &strings.Builder{},
+	}
+
+	payload, err := app.decodeJSONObjectFlag("@-", "--json")
+	if err != nil {
+		t.Fatalf("decodeJSONObjectFlag() error = %v", err)
+	}
+	if payload["url"] != "magnet:?xt=urn:btih:test" {
+		t.Fatalf("payload = %#v", payload)
+	}
+}
+
+func TestRunDefaultsToJSONWhenStdoutIsNotATerminal(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{"version"}, strings.NewReader(""), stdout, stderr)
+	if exitCode != int(exitCodeSuccess) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal(stdout) error = %v; stdout=%q", err, stdout.String())
+	}
+	if output["name"] != "chilly" {
+		t.Fatalf("output = %#v", output)
+	}
+}
+
+func TestRunHonorsExplicitPrettyOutputWhenStdoutIsNotATerminal(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{"version", "--output", "pretty"}, strings.NewReader(""), stdout, stderr)
+	if exitCode != int(exitCodeSuccess) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+	if strings.Contains(stdout.String(), `"name"`) {
+		t.Fatalf("stdout = %q, want pretty output", stdout.String())
 	}
 }
 

@@ -8,7 +8,8 @@ import (
 )
 
 func newVersionCommand(app *appContext) *cobra.Command {
-	return &cobra.Command{
+	var fields string
+	command := &cobra.Command{
 		Use:   "version",
 		Short: "Show CLI build info",
 		Example: strings.TrimSpace(`
@@ -17,18 +18,32 @@ chilly version --output json
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			info := currentBuildInfo()
+			selection, err := parseFieldSelection(fields)
+			if err != nil {
+				return err
+			}
 			if app.opts.output != outputJSON {
+				if selection != nil {
+					return app.writeAnyWithRenderer(map[string]any{
+						"name":       "chilly",
+						"version":    info.Version,
+						"commit":     info.Commit,
+						"build_date": info.BuildDate,
+					}, selection, nil)
+				}
 				_, err := fmt.Fprintln(app.stdout, formatVersionLine(info.Version, info.Commit))
 				return wrapInternalError("stdout_write_failed", "write version output", err)
 			}
-			return app.writeJSONPayload(map[string]any{
+			return app.writeAnyWithRenderer(map[string]any{
 				"name":       "chilly",
 				"version":    info.Version,
 				"commit":     info.Commit,
 				"build_date": info.BuildDate,
-			})
+			}, selection, nil)
 		},
 	}
+	command.Flags().StringVar(&fields, "fields", "", "comma-separated field paths to include in the output")
+	return command
 }
 
 func formatVersionLine(version string, commit string) string {

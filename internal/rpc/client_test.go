@@ -141,3 +141,32 @@ func TestAPIErrorErrorIncludesBodyWhenEnvelopeMissing(t *testing.T) {
 		t.Fatalf("Error() = %q", got)
 	}
 }
+
+func TestCallRejectsDangerousProcedureNames(t *testing.T) {
+	t.Parallel()
+
+	client := NewClient("https://api.chill.institute", http.DefaultClient)
+	invalid := []string{
+		"",
+		"../chill.v4.UserService/GetUserProfile",
+		"chill.v4.UserService/GetUserProfile?x=1",
+		"chill.v4.UserService/GetUserProfile#frag",
+		"chill.v4.UserService/%2e%2e/GetUserProfile",
+		"chill.v4.UserService\\GetUserProfile",
+	}
+
+	for _, procedure := range invalid {
+		procedure := procedure
+		t.Run(procedure, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := client.Call(context.Background(), CallRequest{
+				Procedure: procedure,
+				AuthMode:  AuthNone,
+			})
+			if err == nil {
+				t.Fatalf("Call(%q) error = nil, want rejection", procedure)
+			}
+		})
+	}
+}

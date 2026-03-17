@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode"
 )
 
 const (
@@ -138,6 +139,12 @@ func normalizeProcedure(value string) (string, error) {
 	}
 	trimmed = strings.TrimPrefix(trimmed, "/")
 	if !strings.Contains(trimmed, "/") {
+		return "", fmt.Errorf("invalid procedure %q", value)
+	}
+	if strings.IndexFunc(trimmed, unicode.IsControl) >= 0 {
+		return "", fmt.Errorf("invalid procedure %q", value)
+	}
+	if strings.Contains(trimmed, "..") || strings.Contains(trimmed, "%") || strings.ContainsAny(trimmed, `\?#`) {
 		return "", fmt.Errorf("invalid procedure %q", value)
 	}
 	return trimmed, nil

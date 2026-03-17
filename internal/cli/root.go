@@ -56,6 +56,17 @@ chilly schema command search --output json
 				}
 				opts.profile = resolvedProfile
 			}
+			if trimmedAPIURL := strings.TrimSpace(opts.apiURL); trimmedAPIURL != "" {
+				normalizedAPIURL, err := normalizeAPIBaseURL(trimmedAPIURL)
+				if err != nil {
+					return err
+				}
+				opts.apiURL = normalizedAPIURL
+			}
+			opts.outputSet = cmd.Flags().Changed("output")
+			if !opts.outputSet && app.isTerminal != nil && !app.isTerminal(app.stdout) {
+				opts.output = outputJSON
+			}
 			opts.output = strings.ToLower(strings.TrimSpace(opts.output))
 			if opts.output != outputPretty && opts.output != outputJSON {
 				return usageError("invalid_output_mode", "invalid --output %q (expected: pretty|json)", opts.output)

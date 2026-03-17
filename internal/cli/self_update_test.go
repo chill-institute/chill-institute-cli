@@ -257,6 +257,121 @@ func TestSelfUpdateRejectsInvalidVersionFlag(t *testing.T) {
 	}
 }
 
+func TestSelfUpdateDryRunReturnsPreviewWithoutReplacingExecutable(t *testing.T) {
+	restoreBuildInfo := currentBuildInfo
+	restoreReleaseService := newReleaseService
+	restoreGOOS := currentRuntimeGOOS
+	restoreGOARCH := currentRuntimeGOARCH
+	restoreExecutable := currentExecutable
+	currentBuildInfo = func() buildinfo.Info { return buildinfo.Info{Version: "v1.0.0"} }
+	currentRuntimeGOOS = "darwin"
+	currentRuntimeGOARCH = "arm64"
+
+	executablePath := filepath.Join(t.TempDir(), "chilly")
+	if err := os.WriteFile(executablePath, []byte("old-binary"), 0o755); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	currentExecutable = func() (string, error) { return executablePath, nil }
+
+	newReleaseService = func() releaseService {
+		return &stubReleaseService{
+			latestRelease: update.Release{
+				TagName: "v1.2.0",
+				Assets: []update.ReleaseAsset{
+					{Name: "checksums.txt", BrowserDownloadURL: "https://example.invalid/checksums.txt"},
+					{Name: "chilly_1.2.0_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.invalid/chilly.tar.gz"},
+				},
+			},
+		}
+	}
+
+	t.Cleanup(func() {
+		currentBuildInfo = restoreBuildInfo
+		newReleaseService = restoreReleaseService
+		currentRuntimeGOOS = restoreGOOS
+		currentRuntimeGOARCH = restoreGOARCH
+		currentExecutable = restoreExecutable
+	})
+
+	stdout := &bytes.Buffer{}
+	command := newSelfUpdateCommand(&appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"--dry-run"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	installed, err := os.ReadFile(executablePath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if string(installed) != "old-binary" {
+		t.Fatalf("installed binary = %q", string(installed))
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if output["dry_run"] != true {
+		t.Fatalf("dry_run = %v, want true", output["dry_run"])
+	}
+	if output["target_version"] != "v1.2.0" {
+		t.Fatalf("target_version = %v, want %q", output["target_version"], "v1.2.0")
+	}
+	if output["asset"] != "chilly_1.2.0_darwin_arm64.tar.gz" {
+		t.Fatalf("asset = %v", output["asset"])
+	}
+}
+
+func TestSelfUpdateAcceptsJSONInput(t *testing.T) {
+	restoreBuildInfo := currentBuildInfo
+	restoreReleaseService := newReleaseService
+	restoreGOOS := currentRuntimeGOOS
+	restoreGOARCH := currentRuntimeGOARCH
+	currentBuildInfo = func() buildinfo.Info { return buildinfo.Info{Version: "v1.0.0"} }
+	currentRuntimeGOOS = "darwin"
+	currentRuntimeGOARCH = "arm64"
+	newReleaseService = func() releaseService {
+		return &stubReleaseService{
+			latestRelease: update.Release{TagName: "v1.2.0"},
+		}
+	}
+	t.Cleanup(func() {
+		currentBuildInfo = restoreBuildInfo
+		newReleaseService = restoreReleaseService
+		currentRuntimeGOOS = restoreGOOS
+		currentRuntimeGOARCH = restoreGOARCH
+	})
+
+	stdout := &bytes.Buffer{}
+	command := newSelfUpdateCommand(&appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"--json", `{"check":true}`})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if output["checked"] != true {
+		t.Fatalf("checked = %v, want true", output["checked"])
+	}
+	if output["latest_version"] != "v1.2.0" {
+		t.Fatalf("latest_version = %v, want %q", output["latest_version"], "v1.2.0")
+	}
+}
+
 func mustTarGZBinary(t *testing.T, payload string) []byte {
 	t.Helper()
 

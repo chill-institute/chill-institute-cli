@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/chill-institute/chill-institute-cli/internal/rpc"
 	"github.com/spf13/cobra"
@@ -54,7 +55,11 @@ func runSearch(app *appContext, query string, indexerID string, fields string) e
 
 	payload := map[string]any{"query": trimmedQuery}
 	if trimmedIndexer := strings.TrimSpace(indexerID); trimmedIndexer != "" {
-		payload["indexer_id"] = trimmedIndexer
+		normalizedIndexerID, err := normalizeIndexerID(trimmedIndexer)
+		if err != nil {
+			return err
+		}
+		payload["indexer_id"] = normalizedIndexerID
 	}
 
 	response, err := app.callRPC(
@@ -69,4 +74,24 @@ func runSearch(app *appContext, query string, indexerID string, fields string) e
 		return fmt.Errorf("search: %w", err)
 	}
 	return app.writeSelectedResponseBodyWithRenderer(response.Body, selection, renderSearchPretty)
+}
+
+func normalizeIndexerID(raw string) (string, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", usageError("missing_indexer_id", "indexer id cannot be empty")
+	}
+	if strings.IndexFunc(trimmed, unicode.IsControl) >= 0 {
+		return "", usageError("invalid_indexer_id", "indexer id must not contain control characters")
+	}
+	if strings.Contains(trimmed, "..") {
+		return "", usageError("invalid_indexer_id", "indexer id must not contain traversal segments")
+	}
+	if strings.ContainsAny(trimmed, `/\?#`) {
+		return "", usageError("invalid_indexer_id", "indexer id must not contain path, query, or fragment characters")
+	}
+	if strings.Contains(trimmed, "%") {
+		return "", usageError("invalid_indexer_id", "indexer id must not contain percent-encoded characters")
+	}
+	return trimmed, nil
 }

@@ -57,6 +57,39 @@ func TestRunAddTransferDryRunSkipsAuthAndReturnsPreview(t *testing.T) {
 	}
 }
 
+func TestRunAddTransferDryRunAcceptsJSONPayloadFromStdin(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{
+		"--config", configPath,
+		"add-transfer",
+		"--json", "@-",
+		"--dry-run",
+		"--output", "json",
+	}, strings.NewReader(`{"url":"magnet:?xt=urn:btih:stdin"}`), stdout, stderr)
+	if exitCode != int(exitCodeSuccess) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal(stdout) error = %v", err)
+	}
+	request, ok := output["request"].(map[string]any)
+	if !ok {
+		t.Fatalf("request = %#v, want object", output["request"])
+	}
+	if request["url"] != "magnet:?xt=urn:btih:stdin" {
+		t.Fatalf("request.url = %v, want %q", request["url"], "magnet:?xt=urn:btih:stdin")
+	}
+}
+
 func TestRunUserSettingsSetDryRunSkipsAuthAndReturnsPreview(t *testing.T) {
 	t.Parallel()
 
@@ -91,6 +124,43 @@ func TestRunUserSettingsSetDryRunSkipsAuthAndReturnsPreview(t *testing.T) {
 		t.Fatalf("procedure = %v, want %q", output["procedure"], procedureUserSaveUserSettings)
 	}
 
+	request, ok := output["request"].(map[string]any)
+	if !ok {
+		t.Fatalf("request = %#v, want object", output["request"])
+	}
+	settings, ok := request["settings"].(map[string]any)
+	if !ok {
+		t.Fatalf("request.settings = %#v, want object", request["settings"])
+	}
+	if settings["showTopMovies"] != true {
+		t.Fatalf("request.settings.showTopMovies = %v, want true", settings["showTopMovies"])
+	}
+}
+
+func TestRunUserSettingsSetDryRunAcceptsFullRequestJSONFromStdin(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{
+		"--config", configPath,
+		"user", "settings", "set",
+		"--json", "@-",
+		"--dry-run",
+		"--output", "json",
+	}, strings.NewReader(`{"settings":{"showTopMovies":true}}`), stdout, stderr)
+	if exitCode != int(exitCodeSuccess) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal(stdout) error = %v", err)
+	}
 	request, ok := output["request"].(map[string]any)
 	if !ok {
 		t.Fatalf("request = %#v, want object", output["request"])
@@ -186,6 +256,84 @@ func TestRunSettingsSetDryRunReturnsLocalPreview(t *testing.T) {
 	}
 }
 
+func TestRunSettingsSetDryRunAcceptsJSONPayloadFromStdin(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{
+		"--config", configPath,
+		"settings", "set",
+		"--json", "@-",
+		"--dry-run",
+		"--output", "json",
+	}, strings.NewReader(`{"key":"api-base-url","value":"https://api.chill.test"}`), stdout, stderr)
+	if exitCode != int(exitCodeSuccess) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal(stdout) error = %v", err)
+	}
+	request, ok := output["request"].(map[string]any)
+	if !ok {
+		t.Fatalf("request = %#v, want object", output["request"])
+	}
+	if request["key"] != "api-base-url" {
+		t.Fatalf("request.key = %v, want %q", request["key"], "api-base-url")
+	}
+	if request["value"] != "https://api.chill.test" {
+		t.Fatalf("request.value = %v, want %q", request["value"], "https://api.chill.test")
+	}
+}
+
+func TestRunAuthLoginDryRunAcceptsJSONPayloadFromStdin(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{
+		"--config", configPath,
+		"auth", "login",
+		"--json", "@-",
+		"--dry-run",
+		"--output", "json",
+	}, strings.NewReader(`{"token":"setup-token","skip_verify":true}`), stdout, stderr)
+	if exitCode != int(exitCodeSuccess) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal(stdout) error = %v", err)
+	}
+	if output["command"] != "auth login" {
+		t.Fatalf("command = %v, want %q", output["command"], "auth login")
+	}
+	request, ok := output["request"].(map[string]any)
+	if !ok {
+		t.Fatalf("request = %#v, want object", output["request"])
+	}
+	if request["mode"] != "token" {
+		t.Fatalf("request.mode = %v, want %q", request["mode"], "token")
+	}
+	if request["token_provided"] != true {
+		t.Fatalf("request.token_provided = %v, want true", request["token_provided"])
+	}
+	if request["skip_verify"] != true {
+		t.Fatalf("request.skip_verify = %v, want true", request["skip_verify"])
+	}
+}
+
 func TestRunAuthLogoutDryRunReturnsLocalPreview(t *testing.T) {
 	t.Parallel()
 
@@ -232,6 +380,80 @@ func TestRunAuthLogoutDryRunReturnsLocalPreview(t *testing.T) {
 	}
 }
 
+func TestRunUserDownloadFolderSetDryRunAcceptsJSONPayloadFromStdin(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{
+		"--config", configPath,
+		"user", "download-folder", "set",
+		"--json", "@-",
+		"--dry-run",
+		"--output", "json",
+	}, strings.NewReader(`{"downloadFolderId":42}`), stdout, stderr)
+	if exitCode != int(exitCodeSuccess) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal(stdout) error = %v", err)
+	}
+	request, ok := output["request"].(map[string]any)
+	if !ok {
+		t.Fatalf("request = %#v, want object", output["request"])
+	}
+	settings, ok := request["settings"].(map[string]any)
+	if !ok {
+		t.Fatalf("request.settings = %#v, want object", request["settings"])
+	}
+	if settings["downloadFolderId"] != "42" {
+		t.Fatalf("request.settings.downloadFolderId = %v, want %q", settings["downloadFolderId"], "42")
+	}
+}
+
+func TestRunUserDownloadFolderClearDryRunAcceptsJSONPayloadFromStdin(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{
+		"--config", configPath,
+		"user", "download-folder", "clear",
+		"--json", "@-",
+		"--dry-run",
+		"--output", "json",
+	}, strings.NewReader(`{"settings":{"downloadFolderId":null}}`), stdout, stderr)
+	if exitCode != int(exitCodeSuccess) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal(stdout) error = %v", err)
+	}
+	request, ok := output["request"].(map[string]any)
+	if !ok {
+		t.Fatalf("request = %#v, want object", output["request"])
+	}
+	settings, ok := request["settings"].(map[string]any)
+	if !ok {
+		t.Fatalf("request.settings = %#v, want object", request["settings"])
+	}
+	if value, ok := settings["downloadFolderId"]; !ok || value != nil {
+		t.Fatalf("request.settings.downloadFolderId = %#v, want null", settings["downloadFolderId"])
+	}
+}
+
 func TestRunSettingsPathUsesDevProfileByDefaultForDevBuilds(t *testing.T) {
 	configHome := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configHome)
@@ -263,6 +485,54 @@ func TestRunSettingsPathUsesDevProfileByDefaultForDevBuilds(t *testing.T) {
 	}
 	if output["profile"] != "dev" {
 		t.Fatalf("profile = %v, want %q", output["profile"], "dev")
+	}
+}
+
+func TestRunSettingsPathRejectsInvalidFields(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{"settings", "path", "--fields", "path..value", "--output", "json"}, strings.NewReader(""), stdout, stderr)
+	if exitCode != int(exitCodeUsage) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeUsage)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stderr.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal(stderr) error = %v", err)
+	}
+	if output["code"] != "invalid_fields" {
+		t.Fatalf("code = %v, want %q", output["code"], "invalid_fields")
+	}
+}
+
+func TestRunRejectsInvalidAPIURLOverride(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{
+		"--api-url", "https://api.chill.institute/v4",
+		"version",
+		"--output", "json",
+	}, strings.NewReader(""), stdout, stderr)
+	if exitCode != int(exitCodeUsage) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeUsage)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stderr.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal(stderr) error = %v", err)
+	}
+	if output["code"] != "invalid_api_base_url" {
+		t.Fatalf("code = %v, want %q", output["code"], "invalid_api_base_url")
 	}
 }
 

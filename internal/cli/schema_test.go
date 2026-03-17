@@ -138,6 +138,73 @@ func TestSchemaCommandUserDownloadFolderSetReturnsMetadata(t *testing.T) {
 	if !output.Mutates || !output.SupportsDryRun {
 		t.Fatalf("metadata = %#v, want mutating dry-run command", output)
 	}
+
+	foundJSON := false
+	for _, input := range output.Inputs {
+		if input.Name == "json" {
+			foundJSON = true
+			break
+		}
+	}
+	if !foundJSON {
+		t.Fatalf("inputs = %#v, want json input", output.Inputs)
+	}
+}
+
+func TestSchemaCommandUserIndexersReturnsFieldMetadata(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	command := newRootCommand(&appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"schema", "command", "user indexers", "--output", "json"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	var output schemaEntry
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if !output.SupportsFields {
+		t.Fatalf("metadata = %#v, want fields support", output)
+	}
+}
+
+func TestSchemaCommandAddTransferReturnsRawJSONInput(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	command := newRootCommand(&appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"schema", "command", "add-transfer", "--output", "json"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	var output schemaEntry
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	foundJSON := false
+	for _, input := range output.Inputs {
+		if input.Name == "json" {
+			foundJSON = true
+			break
+		}
+	}
+	if !foundJSON {
+		t.Fatalf("inputs = %#v, want json input", output.Inputs)
+	}
 }
 
 func TestSchemaProcedureGetFolderReturnsMetadata(t *testing.T) {
@@ -442,6 +509,41 @@ func TestSchemaCommandAuthLogoutReturnsDryRunMetadata(t *testing.T) {
 	}
 }
 
+func TestSchemaCommandAuthLoginReturnsJSONInputMetadata(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	command := newRootCommand(&appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"schema", "command", "auth login", "--output", "json"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	var output schemaEntry
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+
+	foundJSON := false
+	foundDryRun := false
+	for _, input := range output.Inputs {
+		switch input.Name {
+		case "json":
+			foundJSON = true
+		case "dry-run":
+			foundDryRun = true
+		}
+	}
+	if !foundJSON || !foundDryRun {
+		t.Fatalf("inputs = %#v, want json and dry-run inputs", output.Inputs)
+	}
+}
+
 func TestSchemaCommandUserSettingsSetReturnsPatchMetadata(t *testing.T) {
 	t.Parallel()
 
@@ -539,6 +641,36 @@ func TestSchemaCommandUserSearchReportsAliasTarget(t *testing.T) {
 	}
 	if !output.SupportsFields {
 		t.Fatal("user search metadata should support fields")
+	}
+}
+
+func TestSchemaCommandOutputCanBeFieldFiltered(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	command := newRootCommand(&appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"schema", "command", "search", "--fields", "id,linked_procedure", "--output", "json"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if len(output) != 2 {
+		t.Fatalf("output = %#v, want only selected fields", output)
+	}
+	if output["id"] != "search" {
+		t.Fatalf("id = %v, want %q", output["id"], "search")
+	}
+	if output["linked_procedure"] != procedureUserSearch {
+		t.Fatalf("linked_procedure = %v, want %q", output["linked_procedure"], procedureUserSearch)
 	}
 }
 

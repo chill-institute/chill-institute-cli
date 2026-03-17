@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -34,13 +35,20 @@ chilly user download-folder
 	profileCommand.Flags().StringVar(&profileFields, "fields", "", "comma-separated field paths to include in the output")
 	command.AddCommand(profileCommand)
 
-	command.AddCommand(&cobra.Command{
+	var indexerFields string
+	indexersCommand := &cobra.Command{
 		Use:   "indexers",
 		Short: "List user indexers",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runUserRPCWithRenderer(app, procedureUserGetIndexers, map[string]any{}, nil, renderUserIndexersPretty)
+			selection, err := parseFieldSelection(indexerFields)
+			if err != nil {
+				return err
+			}
+			return runUserRPCWithRenderer(app, procedureUserGetIndexers, map[string]any{}, selection, renderUserIndexersPretty)
 		},
-	})
+	}
+	indexersCommand.Flags().StringVar(&indexerFields, "fields", "", "comma-separated field paths to include in the output")
+	command.AddCommand(indexersCommand)
 
 	var query string
 	var indexerID string
@@ -115,6 +123,7 @@ Save user settings in one of two modes:
 chilly user settings set show-top-movies true
 chilly user settings set sort-by title --dry-run --output json
 chilly user settings set --json '{"showTopMovies":true}'
+printf '{"settings":{"showTopMovies":true}}' | chilly user settings set --json @- --output json
 `),
 		Args: allowDescribeArgs(cobra.MaximumNArgs(2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -124,11 +133,10 @@ chilly user settings set --json '{"showTopMovies":true}'
 					return usageError("ambiguous_user_settings_update", "use either --json or <field> <value>, not both")
 				}
 
-				var payload map[string]any
-				if err := json.Unmarshal([]byte(trimmed), &payload); err != nil {
-					return usageError("invalid_json_payload", "parse --json payload: %v", err)
+				request, err := decodeUserSettingsRequest(app, rawSettings)
+				if err != nil {
+					return err
 				}
-				request := map[string]any{"settings": payload}
 				if dryRun {
 					return app.writeDryRunPreview("user settings set", procedureUserSaveUserSettings, rpc.AuthUser, request)
 				}
@@ -146,7 +154,7 @@ chilly user settings set --json '{"showTopMovies":true}'
 			return runUserSettingsPatch(app, "user settings set", patch, dryRun)
 		},
 	}
-	setCommand.Flags().StringVar(&rawSettings, "json", "", "full settings object JSON")
+	setCommand.Flags().StringVar(&rawSettings, "json", "", "raw JSON request body, bare settings object JSON, or @- to read from stdin")
 	setCommand.Flags().BoolVar(&dryRun, "dry-run", false, "validate input and print the request or patch without executing it")
 	settingsCommand.AddCommand(setCommand)
 
@@ -160,16 +168,18 @@ func newUserTransferCommand(app *appContext) *cobra.Command {
 	}
 
 	var transferURL string
+	var rawRequest string
 	var dryRun bool
 	addCommand := &cobra.Command{
 		Use:   "add",
 		Short: "Add a transfer through chill.institute",
 		Long:  "Alias for the top-level add-transfer command under the user namespace.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runAddTransfer(app, "user transfer add", transferURL, dryRun)
+			return runAddTransfer(app, "user transfer add", transferURL, rawRequest, dryRun)
 		},
 	}
 	addCommand.Flags().StringVar(&transferURL, "url", "", "magnet or URL")
+	addCommand.Flags().StringVar(&rawRequest, "json", "", "raw JSON request body, or @- to read it from stdin")
 	addCommand.Flags().BoolVar(&dryRun, "dry-run", false, "validate input and print the request without executing it")
 	transferCommand.AddCommand(addCommand)
 
@@ -198,28 +208,53 @@ func newUserTransferCommand(app *appContext) *cobra.Command {
 }
 
 func newUserDownloadFolderCommand(app *appContext) *cobra.Command {
+	var fields string
 	command := &cobra.Command{
 		Use:   "download-folder",
 		Short: "Show your current download folder",
 		Example: strings.TrimSpace(`
 chilly user download-folder
+chilly user download-folder --fields folder.id,folder.name --output json
 chilly user download-folder set 42 --dry-run --output json
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runUserRPCWithRenderer(app, procedureUserGetDownloadFolder, map[string]any{}, nil, renderDownloadFolderPretty)
+			selection, err := parseFieldSelection(fields)
+			if err != nil {
+				return err
+			}
+			return runUserRPCWithRenderer(app, procedureUserGetDownloadFolder, map[string]any{}, selection, renderDownloadFolderPretty)
 		},
 	}
+	command.Flags().StringVar(&fields, "fields", "", "comma-separated field paths to include in the output")
 
 	var dryRun bool
+	var rawRequest string
 	setCommand := &cobra.Command{
-		Use:   "set <id>",
+		Use:   "set [id]",
 		Short: "Set the current download folder",
 		Example: strings.TrimSpace(`
 chilly user download-folder set 42
 chilly user download-folder set 42 --dry-run --output json
+printf '{"downloadFolderId":42}' | chilly user download-folder set --json @- --dry-run --output json
 `),
-		Args: allowDescribeArgs(cobra.ExactArgs(1)),
+		Args: allowDescribeArgs(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if strings.TrimSpace(rawRequest) != "" {
+				if len(args) != 0 {
+					return usageError("ambiguous_download_folder_update", "use either --json or <id>, not both")
+				}
+				request, err := resolveDownloadFolderSetRequest(app, rawRequest)
+				if err != nil {
+					return err
+				}
+				if dryRun {
+					return app.writeDryRunPreview("user download-folder set", procedureUserSaveUserSettings, rpc.AuthUser, request)
+				}
+				return runUserRPC(app, procedureUserSaveUserSettings, request)
+			}
+			if len(args) != 1 {
+				return usageError("missing_folder_id", "folder id is required")
+			}
 			id, err := normalizeFolderID(args[0])
 			if err != nil {
 				return err
@@ -230,24 +265,38 @@ chilly user download-folder set 42 --dry-run --output json
 			}, dryRun)
 		},
 	}
+	setCommand.Flags().StringVar(&rawRequest, "json", "", "raw JSON request body, bare settings object JSON, or @- to read from stdin")
 	setCommand.Flags().BoolVar(&dryRun, "dry-run", false, "validate input and print the request or patch without executing it")
 	command.AddCommand(setCommand)
 
 	var clearDryRun bool
+	var clearRawRequest string
 	clearCommand := &cobra.Command{
 		Use:   "clear",
 		Short: "Clear the current download folder setting",
 		Example: strings.TrimSpace(`
 chilly user download-folder clear
 chilly user download-folder clear --dry-run --output json
+printf '{"settings":{"downloadFolderId":null}}' | chilly user download-folder clear --json @- --dry-run --output json
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if strings.TrimSpace(clearRawRequest) != "" {
+				request, err := resolveDownloadFolderClearRequest(app, clearRawRequest)
+				if err != nil {
+					return err
+				}
+				if clearDryRun {
+					return app.writeDryRunPreview("user download-folder clear", procedureUserSaveUserSettings, rpc.AuthUser, request)
+				}
+				return runUserRPC(app, procedureUserSaveUserSettings, request)
+			}
 			return runUserSettingsPatch(app, "user download-folder clear", userSettingsPatch{
 				Field: "downloadFolderId",
 				Value: nil,
 			}, clearDryRun)
 		},
 	}
+	clearCommand.Flags().StringVar(&clearRawRequest, "json", "", "raw JSON request body, bare settings object JSON, or @- to read from stdin")
 	clearCommand.Flags().BoolVar(&clearDryRun, "dry-run", false, "validate input and print the request or patch without executing it")
 	command.AddCommand(clearCommand)
 
@@ -260,12 +309,14 @@ func newUserFolderCommand(app *appContext) *cobra.Command {
 		Short: "Inspect folders",
 	}
 
+	var fields string
 	getCommand := &cobra.Command{
 		Use:   "get <id>",
 		Short: "Get one folder and its children",
 		Example: strings.TrimSpace(`
 chilly user folder get 0
 chilly user folder get 42 --output json
+chilly user folder get 42 --fields parent.name,files.name --output json
 `),
 		Args: allowDescribeArgs(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -273,9 +324,14 @@ chilly user folder get 42 --output json
 			if err != nil {
 				return err
 			}
-			return runUserRPCWithRenderer(app, procedureUserGetFolder, map[string]any{"id": id}, nil, renderFolderPretty)
+			selection, err := parseFieldSelection(fields)
+			if err != nil {
+				return err
+			}
+			return runUserRPCWithRenderer(app, procedureUserGetFolder, map[string]any{"id": id}, selection, renderFolderPretty)
 		},
 	}
+	getCommand.Flags().StringVar(&fields, "fields", "", "comma-separated field paths to include in the output")
 
 	command.AddCommand(getCommand)
 	return command
@@ -283,6 +339,85 @@ chilly user folder get 42 --output json
 
 func runUserRPC(app *appContext, procedure string, body any) error {
 	return runUserRPCWithRenderer(app, procedure, body, nil, nil)
+}
+
+func decodeUserSettingsRequest(app *appContext, rawSettings string) (map[string]any, error) {
+	payload, err := app.decodeJSONObjectFlag(rawSettings, "--json")
+	if err != nil {
+		return nil, err
+	}
+	request := payload
+	if settings, ok := payload["settings"]; ok {
+		if _, ok := settings.(map[string]any); !ok {
+			return nil, usageError("invalid_json_payload", "--json payload field settings must be a JSON object")
+		}
+	} else {
+		request = map[string]any{"settings": payload}
+	}
+	return request, nil
+}
+
+func resolveDownloadFolderSetRequest(app *appContext, rawRequest string) (map[string]any, error) {
+	return resolveDownloadFolderRequest(app, rawRequest, false)
+}
+
+func resolveDownloadFolderClearRequest(app *appContext, rawRequest string) (map[string]any, error) {
+	request, err := resolveDownloadFolderRequest(app, rawRequest, true)
+	if err != nil {
+		return nil, err
+	}
+	settings := request["settings"].(map[string]any)
+	if settings["downloadFolderId"] != nil {
+		return nil, usageError("invalid_json_payload", "--json payload for download-folder clear must set downloadFolderId to null")
+	}
+	return request, nil
+}
+
+func resolveDownloadFolderRequest(app *appContext, rawRequest string, allowNull bool) (map[string]any, error) {
+	request, err := decodeUserSettingsRequest(app, rawRequest)
+	if err != nil {
+		return nil, err
+	}
+	settings := request["settings"].(map[string]any)
+	rawValue, ok := settings["downloadFolderId"]
+	if !ok {
+		return nil, usageError("invalid_json_payload", "--json payload must include settings.downloadFolderId")
+	}
+	normalizedValue, err := normalizeDownloadFolderJSONValue(rawValue, allowNull)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"settings": map[string]any{
+			"downloadFolderId": normalizedValue,
+		},
+	}, nil
+}
+
+func normalizeDownloadFolderJSONValue(value any, allowNull bool) (any, error) {
+	switch typed := value.(type) {
+	case nil:
+		if !allowNull {
+			return nil, usageError("invalid_json_payload", "downloadFolderId must be an integer")
+		}
+		return nil, nil
+	case string:
+		id, err := normalizeFolderID(typed)
+		if err != nil {
+			return nil, err
+		}
+		return strconv.FormatInt(id, 10), nil
+	case float64:
+		if math.IsNaN(typed) || math.IsInf(typed, 0) || typed != math.Trunc(typed) || typed < 0 || typed > math.MaxInt64 {
+			return nil, usageError("invalid_json_payload", "downloadFolderId must be a non-negative integer")
+		}
+		return strconv.FormatInt(int64(typed), 10), nil
+	default:
+		if allowNull {
+			return nil, usageError("invalid_json_payload", "downloadFolderId must be a non-negative integer or null")
+		}
+		return nil, usageError("invalid_json_payload", "downloadFolderId must be a non-negative integer")
+	}
 }
 
 func loadCurrentUserSettings(app *appContext) (map[string]any, error) {

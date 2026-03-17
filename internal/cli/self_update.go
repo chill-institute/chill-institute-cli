@@ -30,6 +30,8 @@ var (
 func newSelfUpdateCommand(app *appContext) *cobra.Command {
 	var targetVersion string
 	var checkOnly bool
+	var rawRequest string
+	var dryRun bool
 
 	command := &cobra.Command{
 		Use:   "self-update",
@@ -38,13 +40,18 @@ func newSelfUpdateCommand(app *appContext) *cobra.Command {
 chilly self-update --check
 chilly self-update
 chilly self-update --version v0.1.0
+chilly self-update --json '{"check":true}' --output json
 `),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			resolvedVersion, resolvedCheckOnly, err := resolveSelfUpdateInput(app, targetVersion, rawRequest, checkOnly)
+			if err != nil {
+				return err
+			}
 			service := newReleaseService()
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
 
-			release, err := resolveRelease(ctx, service, targetVersion)
+			release, err := resolveRelease(ctx, service, resolvedVersion)
 			if err != nil {
 				if classified := classifyError(err); classified != nil && classified.Kind == errorKindUsage {
 					return err
@@ -59,14 +66,20 @@ chilly self-update --version v0.1.0
 				"checked":         true,
 			}
 
-			if checkOnly {
+			if resolvedCheckOnly {
 				payload["up_to_date"] = update.SameVersion(current.Version, release.TagName)
+				if dryRun {
+					payload["dry_run"] = true
+				}
 				return app.writeJSONPayload(payload)
 			}
 
 			if update.SameVersion(current.Version, release.TagName) {
 				payload["updated"] = false
 				payload["up_to_date"] = true
+				if dryRun {
+					payload["dry_run"] = true
+				}
 				return app.writeJSONPayload(payload)
 			}
 
@@ -82,6 +95,14 @@ chilly self-update --version v0.1.0
 			asset, err := update.FindAsset(release, currentRuntimeGOOS, currentRuntimeGOARCH)
 			if err != nil {
 				return wrapInternalError("resolve_release_asset_failed", "resolve release asset", err)
+			}
+			if dryRun {
+				payload["dry_run"] = true
+				payload["updated"] = false
+				payload["up_to_date"] = false
+				payload["asset"] = asset.Name
+				payload["target_version"] = release.TagName
+				return app.writeJSONPayload(payload)
 			}
 			checksumAsset, err := update.FindChecksumAsset(release)
 			if err != nil {
@@ -123,7 +144,42 @@ chilly self-update --version v0.1.0
 
 	command.Flags().BoolVar(&checkOnly, "check", false, "check for a newer release without installing it")
 	command.Flags().StringVar(&targetVersion, "version", "", "specific release tag to install, for example v0.1.0")
+	command.Flags().StringVar(&rawRequest, "json", "", "raw JSON request body, or @- to read it from stdin")
+	command.Flags().BoolVar(&dryRun, "dry-run", false, "preview update resolution without replacing the current executable")
 	return command
+}
+
+func resolveSelfUpdateInput(app *appContext, version string, rawRequest string, checkOnly bool) (string, bool, error) {
+	trimmedRequest := strings.TrimSpace(rawRequest)
+	trimmedVersion := strings.TrimSpace(version)
+	if trimmedRequest == "" {
+		return trimmedVersion, checkOnly, nil
+	}
+	if trimmedVersion != "" || checkOnly {
+		return "", false, usageError("ambiguous_self_update_input", "use either flags or --json for self-update input, not both")
+	}
+
+	payload, err := app.decodeJSONObjectFlag(rawRequest, "--json")
+	if err != nil {
+		return "", false, err
+	}
+	resolvedVersion := ""
+	if value, ok := payload["version"]; ok {
+		typed, ok := value.(string)
+		if !ok {
+			return "", false, usageError("invalid_json_payload", "--json payload field version must be a string")
+		}
+		resolvedVersion = strings.TrimSpace(typed)
+	}
+	resolvedCheckOnly := false
+	if value, ok := payload["check"]; ok {
+		typed, ok := value.(bool)
+		if !ok {
+			return "", false, usageError("invalid_json_payload", "--json payload field check must be a boolean")
+		}
+		resolvedCheckOnly = typed
+	}
+	return resolvedVersion, resolvedCheckOnly, nil
 }
 
 func resolveRelease(ctx context.Context, service releaseService, version string) (update.Release, error) {

@@ -116,8 +116,9 @@ The CLI keeps a local metadata registry for:
 
 - public command schemas
 - backend procedure schemas linked from those commands
-- dry-run eligibility for selected mutating surfaces
-- field-selection eligibility for selected read surfaces
+- raw JSON request-body entrypoints for agent-facing mutating commands
+- dry-run eligibility for mutating surfaces
+- field-selection eligibility for read surfaces and schema views
 - supported single-field patch semantics for user settings
 
 That registry is the source of truth for:
@@ -125,10 +126,22 @@ That registry is the source of truth for:
 - `chilly schema`
 - `chilly <command> --describe`
 - canonical-vs-alias metadata for overlapping top-level and nested commands
-- current `--dry-run` support for selected mutating commands
-- current `--fields` support for selected read commands
+- raw request-body support such as `add-transfer --json @-`, `auth login --json @-`, `settings set --json @-`, and `self-update --json`
+- current `--dry-run` support for mutating commands
+- current `--fields` support for read commands and schema surfaces
 
 The current milestone does not fetch schema dynamically from the API. Discovery is explicit and local to the CLI repo.
+
+## Agent Knowledge Packaging
+
+The repo ships one entry skill at `skills/chilly-cli` and uses nested reference docs under `skills/chilly-cli/references/` for progressive disclosure:
+
+- `auth.md`: login, logout, `whoami`, host checks, and profile isolation
+- `read.md`: read-only hosted API workflows
+- `mutate.md`: side-effecting workflows with `--dry-run` and raw payload guidance
+- `contracts.md`: `schema`, `--describe`, `doctor`, and local contract discovery
+
+This keeps the top-level skill stable while letting agents load only the workflow-specific reference they need next. The same security posture applies across the skill and its references: the agent is not a trusted operator, so narrow reads, explicit schema discovery, local validation, and request previews are preferred over optimistic execution.
 
 ## Package Layout
 
@@ -155,17 +168,25 @@ This keeps CLI command glue separate from reusable transport and release modules
 
 - Successful command data is written to `stdout`.
 - Prompts, warnings, and error output are written to `stderr`.
+- When `stdout` is not a terminal and `--output` is not set explicitly, command data defaults to compact JSON.
 - In `--output json`, failures emit a single JSON error envelope to `stderr`.
 - Exit codes are classified into usage (`2`), auth (`3`), API (`4`), and internal (`5`) failures.
 
 For supported mutating commands, `--dry-run` validates local input and writes a deterministic request or config-change preview to `stdout` without mutating local state, loading auth, or calling the API.
 
+`add-transfer`, `auth login`, `settings set`, and `self-update` accept two request styles:
+
+- convenience flags such as `--url`, `--token`, `--check`, or positional key/value arguments
+- raw JSON request bodies with `--json`, including `--json @-` to read from stdin when a pipeline is easier than shell-escaping
+
 `user settings set` supports two write paths:
 
-- full replacement with `--json`
+- full JSON request bodies with `--json`, including `--json @-` to read from stdin
 - one-field patch mode that fetches current settings, merges a validated patch, and saves the full object back through the existing RPC
 
-For supported read commands, `--fields` applies a client-side field mask to the JSON response before rendering it to `stdout`.
+For supported read commands, `--fields` applies a client-side field mask to the JSON response before rendering it to `stdout`. The main agent-facing read surfaces now include `search`, `whoami`, `list-top-movies`, `doctor`, `get-transfer`, `user settings get`, `user profile`, `user search`, `user top-movies`, `user transfer get`, `user indexers`, `user download-folder`, `user folder get`, `settings path`, `settings show`, `settings get`, `version`, `schema`, `schema command`, and `schema procedure`.
+
+Search hardens opaque `--indexer-id` input before it reaches the API. It rejects control characters, traversal-like segments, percent-encoded strings, and embedded path/query/fragment characters so agent hallucinations fail locally instead of leaking into remote requests. The low-level RPC client applies the same class of checks to procedure names before building `/v4/{procedure}` URLs, and `settings set api-base-url` rejects user info, query strings, fragments, and non-root paths.
 
 In default pretty mode, the core read commands render small human-oriented summaries while `--output json` keeps the machine contract stable.
 

@@ -276,6 +276,30 @@ func TestSearchCommandUsesStoredToken(t *testing.T) {
 	}
 }
 
+func TestSearchCommandRejectsUnsafeIndexerID(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	exitCode := Run([]string{
+		"search",
+		"--query", "dune",
+		"--indexer-id", "../yts",
+		"--output", "json",
+	}, strings.NewReader(""), stdout, stderr)
+	if exitCode != int(exitCodeUsage) {
+		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeUsage)
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stderr.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal(stderr) error = %v", err)
+	}
+	if output["code"] != "invalid_indexer_id" {
+		t.Fatalf("code = %v, want %q", output["code"], "invalid_indexer_id")
+	}
+}
+
 func TestSearchCommandFieldsFiltersResponse(t *testing.T) {
 	t.Parallel()
 
@@ -1008,6 +1032,43 @@ func TestUserIndexersPrettyOutputShowsReadableSummary(t *testing.T) {
 	}
 }
 
+func TestUserIndexersFieldsFiltersResponse(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		_, _ = writer.Write([]byte(`{"indexers":[{"id":"yts","name":"YTS","enabled":true,"status":"INDEXER_STATUS_HEALTHY"}]}`))
+	}))
+	defer server.Close()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	store, err := config.NewStore(configPath)
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+	if err := store.Save(config.Config{APIBaseURL: server.URL, AuthToken: "saved-token"}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	command := newUserCommand(&appContext{
+		opts:   &appOptions{configPath: configPath, output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"indexers", "--fields", "indexers.id"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if strings.Contains(stdout.String(), `"name"`) {
+		t.Fatalf("stdout should not include name: %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), `"id":"yts"`) {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
 func TestUserDownloadFolderPrettyOutputShowsReadableSummary(t *testing.T) {
 	t.Parallel()
 
@@ -1045,6 +1106,43 @@ func TestUserDownloadFolderPrettyOutputShowsReadableSummary(t *testing.T) {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("pretty output missing %q in %q", expected, rendered)
 		}
+	}
+}
+
+func TestUserDownloadFolderFieldsFiltersResponse(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		_, _ = writer.Write([]byte(`{"folder":{"id":"42","name":"chill.institute","fileType":"FOLDER"}}`))
+	}))
+	defer server.Close()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	store, err := config.NewStore(configPath)
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+	if err := store.Save(config.Config{APIBaseURL: server.URL, AuthToken: "saved-token"}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	command := newUserCommand(&appContext{
+		opts:   &appOptions{configPath: configPath, output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"download-folder", "--fields", "folder.name"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if strings.Contains(stdout.String(), `"id"`) {
+		t.Fatalf("stdout should not include id: %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), `"name":"chill.institute"`) {
+		t.Fatalf("stdout = %q", stdout.String())
 	}
 }
 
@@ -1127,6 +1225,43 @@ func TestUserFolderGetPrettyOutputShowsReadableSummary(t *testing.T) {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("pretty output missing %q in %q", expected, rendered)
 		}
+	}
+}
+
+func TestUserFolderGetFieldsFiltersResponse(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		_, _ = writer.Write([]byte(`{"parent":{"id":"42","name":"Movies"},"files":[{"id":"1","name":"Dune","fileType":"VIDEO"}]}`))
+	}))
+	defer server.Close()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	store, err := config.NewStore(configPath)
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+	if err := store.Save(config.Config{APIBaseURL: server.URL, AuthToken: "saved-token"}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	command := newUserCommand(&appContext{
+		opts:   &appOptions{configPath: configPath, output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"folder", "get", "42", "--fields", "parent.name,files.name"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if strings.Contains(stdout.String(), `"id"`) {
+		t.Fatalf("stdout should not include id: %q", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), `"name":"Movies"`) || !strings.Contains(stdout.String(), `"name":"Dune"`) {
+		t.Fatalf("stdout = %q", stdout.String())
 	}
 }
 

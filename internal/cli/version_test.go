@@ -71,3 +71,38 @@ func TestVersionCommandOutputsPrettyVersionLine(t *testing.T) {
 		t.Fatalf("stdout = %q", got)
 	}
 }
+
+func TestVersionCommandFiltersFields(t *testing.T) {
+	restore := currentBuildInfo
+	currentBuildInfo = func() buildinfo.Info {
+		return buildinfo.Info{
+			Version:   "v1.2.3",
+			Commit:    "abc1234",
+			BuildDate: "2026-03-15T00:00:00Z",
+		}
+	}
+	t.Cleanup(func() { currentBuildInfo = restore })
+
+	stdout := &bytes.Buffer{}
+	command := newVersionCommand(&appContext{
+		opts:   &appOptions{output: outputPretty},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"--fields", "version"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	var output map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if len(output) != 1 {
+		t.Fatalf("output = %#v, want single selected field", output)
+	}
+	if output["version"] != "v1.2.3" {
+		t.Fatalf("version = %v", output["version"])
+	}
+}

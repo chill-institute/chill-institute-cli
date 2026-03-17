@@ -20,6 +20,15 @@ Useful reports include issues involving:
 - command injection, path traversal, or unsafe external input handling
 - private data exposure in CLI output, logs, or config files
 
+## Security Posture
+
+`chilly` is designed with the assumption that the agent is not a trusted operator.
+
+- opaque IDs, base URLs, and procedure names should be validated locally before use
+- machine-readable output belongs on `stdout`; prompts, warnings, and recovery hints belong on `stderr`
+- mutating commands should offer preview paths such as `--dry-run`
+- request bodies should prefer explicit JSON contracts over heuristic shell parsing when possible
+
 ## Guidelines
 
 - test only against accounts and data you control
