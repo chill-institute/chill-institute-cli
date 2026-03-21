@@ -49,7 +49,7 @@ jobs:
 
       - name: Run GoReleaser
         if: steps.semantic_release.outputs.new_release_published == 'true'
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           version: v2.14.3
           args: release --clean
