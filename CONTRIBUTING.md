@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing to `chill-institute-cli`.
+Thanks for contributing to `chill-institute-cli`
 
 ## Setup
 
@@ -53,7 +53,7 @@ The repository ships git hooks in `.githooks/`:
 - `pre-commit` launches `mise run hooks:pre-commit`, which formats staged Go files with `goimports` and `gofmt`
 - `pre-push` launches `mise run hooks:pre-push`, which runs `mise run verify`
 
-The hook files stay as tiny executable launchers because Git requires hook entrypoints to be executable files. The actual workflow logic lives in `mise.toml`.
+The hook files stay as tiny executable launchers because Git requires hook entrypoints to be executable files. The actual workflow logic lives in `mise.toml`
 
 Opt-in live integration checks are available when you want to verify the real hosted API surface:
 
@@ -81,8 +81,8 @@ mise run test:integration
 Normal CLI change flow:
 
 1. Make the change.
-2. Run `mise run verify`.
-3. Merge or push to `main`.
+2. Run `mise run verify`
+3. Merge or push to `main`
 4. GitHub Actions runs `semantic-release` on `main` and creates the next `vX.Y.Z` tag from conventional commits.
 5. The same `main` release workflow runs GoReleaser, publishes release archives, creates the GitHub release, and updates the Homebrew tap.
 6. The existing tag-based GoReleaser workflow remains available as a manual fallback for intentionally pushed tags.

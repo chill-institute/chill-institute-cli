@@ -13,7 +13,7 @@ Security posture: the agent is not a trusted operator. Prefer commands that vali
 
 - Load [auth.md](./references/auth.md) when the task is about login, logout, `whoami`, profiles, or host verification.
 - Load [read.md](./references/read.md) for `search`, hosted reads, transfer reads, indexers, and folders.
-- Load [mutate.md](./references/mutate.md) for side-effecting commands such as `add-transfer`, settings writes, download-folder changes, auth changes, and `self-update`.
+- Load [mutate.md](./references/mutate.md) for side-effecting commands such as `add-transfer`, settings writes, download-folder changes, auth changes, and `self-update`
 - Load [contracts.md](./references/contracts.md) for `schema`, `--describe`, `doctor`, and local contract discovery.
 - Keep this root skill loaded when multiple chilly workflows are mixed in one task.
 
@@ -23,7 +23,7 @@ Security posture: the agent is not a trusted operator. Prefer commands that vali
 - If `chilly` is not on `PATH`, stop and help the user install the CLI before continuing.
 - Check `chilly settings get api-base-url --output json` before assuming which hosted environment is active.
 - Use `--profile <name>` or `--config <path>` when you need isolated local state.
-- For repo maintenance or local sanity checks, prefer `mise run smoke`, `mise run verify`, and `mise run coverage:report`.
+- For repo maintenance or local sanity checks, prefer `mise run smoke`, `mise run verify`, and `mise run coverage:report`
 - Use `schema` or `--describe` when you need the current local contract before running a command.
 - Use `doctor` when auth, config path, profile, or environment state looks inconsistent.
 - Prefer top-level canonical commands like `search`, `whoami`, `list-top-movies`, and `add-transfer` over nested aliases.
@@ -38,7 +38,7 @@ Security posture: the agent is not a trusted operator. Prefer commands that vali
 
 - Prefer `--output json` for automation.
 - Piped runs default to JSON automatically, but explicit `--output json` is still the safest choice when a workflow depends on the contract.
-- Expect prompts, browser-login hints, and transient loading indicators on `stderr`; parse only `stdout`.
-- Expect failures in `--output json` mode to appear as a single JSON envelope on `stderr`.
+- Expect prompts, browser-login hints, and transient loading indicators on `stderr`; parse only `stdout`
+- Expect failures in `--output json` mode to appear as a single JSON envelope on `stderr`
 - Prefer top-level canonical commands when both top-level and `user ...` forms exist.
 - Use `whoami` after auth changes when you need positive confirmation that the token works.

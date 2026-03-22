@@ -4,10 +4,10 @@ Use this reference for read-only workflows against the hosted API.
 
 ## Rules
 
-- Prefer `--output json`.
+- Prefer `--output json`
 - Prefer `--fields` whenever the command supports it.
 - Start wide enough to discover IDs, then rerun narrowly with selected fields.
-- Parse only `stdout`. Progress indicators and notices may appear on `stderr`.
+- Parse only `stdout` Progress indicators and notices may appear on `stderr`
 - Prefer top-level canonical commands over nested aliases when both exist.
 
 ## Search

@@ -4,8 +4,8 @@ Use this reference when the task is about authentication, profile selection, or 
 
 ## Rules
 
-- Parse only `stdout`. Browser hints and notices may appear on `stderr`.
-- Check the active host first with `chilly settings get api-base-url --output json`.
+- Parse only `stdout` Browser hints and notices may appear on `stderr`
+- Check the active host first with `chilly settings get api-base-url --output json`
 - Use `--profile <name>` or `--config <path>` when you need isolated state.
 - Use `whoami` after auth changes when you need positive confirmation that the token works.
 - Use `doctor --output json` when auth and local config may both be part of the problem.
@@ -33,4 +33,4 @@ Use this reference when the task is about authentication, profile selection, or 
 
 `chilly auth login` now defaults to the hosted web token flow: it prints [https://chill.institute/auth/cli-token](https://chill.institute/auth/cli-token), tells the user to copy the setup token, then waits for that token to be pasted back into the terminal.
 
-If the browser is on another machine, open the same page in a signed-in browser and copy the token into `chilly auth login --token <token>`.
+If the browser is on another machine, open the same page in a signed-in browser and copy the token into `chilly auth login --token <token>`
