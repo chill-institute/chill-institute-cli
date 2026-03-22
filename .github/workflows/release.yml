@@ -34,9 +34,9 @@ jobs:
             ~/.cache/go-build
             ~/.cache/golangci-lint
             ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('.tool-versions', 'go.sum', '.golangci.yml') }}
+          key: ${{ runner.os }}-go-${{ hashFiles('mise.toml', 'go.sum', '.golangci.yml') }}
           restore-keys: |
-            ${{ runner.os }}-go-${{ hashFiles('.tool-versions', 'go.sum') }}
+            ${{ runner.os }}-go-${{ hashFiles('mise.toml', 'go.sum') }}
             ${{ runner.os }}-go-
 
       - name: Verify
