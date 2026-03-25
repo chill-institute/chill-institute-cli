@@ -7,11 +7,11 @@ import (
 func TestNormalizeUserSettingsPatch(t *testing.T) {
 	t.Parallel()
 
-	patch, err := normalizeUserSettingsPatch("show-top-movies", "true")
+	patch, err := normalizeUserSettingsPatch("show-movies", "true")
 	if err != nil {
 		t.Fatalf("normalizeUserSettingsPatch() error = %v", err)
 	}
-	if patch.Field != "showTopMovies" || patch.Value != true {
+	if patch.Field != "showMovies" || patch.Value != true {
 		t.Fatalf("patch = %#v", patch)
 	}
 
@@ -31,13 +31,13 @@ func TestNormalizeUserSettingsPatch(t *testing.T) {
 func TestNormalizePatchFieldNameAndKebabCase(t *testing.T) {
 	t.Parallel()
 
-	if got := normalizePatchFieldName("show-top-movies"); got != "showTopMovies" {
+	if got := normalizePatchFieldName("show-movies"); got != "showMovies" {
 		t.Fatalf("normalizePatchFieldName() = %q", got)
 	}
-	if got := normalizePatchFieldName("showTopMovies"); got != "showTopMovies" {
+	if got := normalizePatchFieldName("showMovies"); got != "showMovies" {
 		t.Fatalf("normalizePatchFieldName(camel) = %q", got)
 	}
-	if got := kebabCase("showTopMovies"); got != "show-top-movies" {
+	if got := kebabCase("showMovies"); got != "show-movies" {
 		t.Fatalf("kebabCase() = %q", got)
 	}
 }
@@ -92,10 +92,10 @@ func TestApplyUserSettingsPatchAndCloneJSONObject(t *testing.T) {
 	}
 
 	patched := applyUserSettingsPatch(source, userSettingsPatch{
-		Field: "showTopMovies",
+		Field: "showMovies",
 		Value: true,
 	})
-	if patched["showTopMovies"] != true {
+	if patched["showMovies"] != true {
 		t.Fatalf("patched = %#v", patched)
 	}
 }

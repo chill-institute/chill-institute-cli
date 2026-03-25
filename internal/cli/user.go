@@ -66,17 +66,8 @@ chilly user download-folder
 	searchCommand.Flags().StringVar(&searchFields, "fields", "", "comma-separated field paths to include in the output")
 	command.AddCommand(searchCommand)
 
-	var topMoviesFields string
-	topMoviesCommand := &cobra.Command{
-		Use:   "top-movies",
-		Short: "List top movies using your profile settings",
-		Long:  "Alias for the top-level list-top-movies command.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runListTopMovies(app, topMoviesFields)
-		},
-	}
-	topMoviesCommand.Flags().StringVar(&topMoviesFields, "fields", "", "comma-separated field paths to include in the output")
-	command.AddCommand(topMoviesCommand)
+	command.AddCommand(newUserMoviesCommand(app))
+	command.AddCommand(newUserTVShowsCommand(app))
 
 	command.AddCommand(newUserSettingsCommand(app))
 	command.AddCommand(newUserTransferCommand(app))
@@ -120,10 +111,10 @@ Save user settings in one of two modes:
 
 ` + supportedUserSettingsPatchHelp()),
 		Example: strings.TrimSpace(`
-chilly user settings set show-top-movies true
+chilly user settings set show-movies true
 chilly user settings set sort-by title --dry-run --output json
-chilly user settings set --json '{"showTopMovies":true}'
-printf '{"settings":{"showTopMovies":true}}' | chilly user settings set --json @- --output json
+chilly user settings set --json '{"showMovies":true}'
+printf '{"settings":{"showMovies":true}}' | chilly user settings set --json @- --output json
 `),
 		Args: allowDescribeArgs(cobra.MaximumNArgs(2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -540,8 +531,18 @@ func prettyRendererForProcedure(procedure string) prettyRenderer {
 		return renderUserSettingsPretty
 	case procedureUserSearch:
 		return renderSearchPretty
-	case procedureUserGetTopMovies:
-		return renderTopMoviesPretty
+	case procedureUserGetMovies:
+		return renderMoviesPretty
+	case procedureUserGetTVShows:
+		return renderTVShowsPretty
+	case procedureUserGetTVShowDetail:
+		return renderTVShowDetailPretty
+	case procedureUserGetTVShowSeason:
+		return renderTVShowSeasonPretty
+	case procedureUserGetTVShowEpisodeDownload:
+		return renderTVShowEpisodeDownloadPretty
+	case procedureUserGetTVShowSeasonDownloads:
+		return renderTVShowSeasonDownloadsPretty
 	case procedureUserAddTransfer, procedureUserGetTransfer:
 		return renderTransferPretty
 	default:

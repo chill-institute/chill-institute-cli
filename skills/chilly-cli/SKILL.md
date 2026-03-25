@@ -26,7 +26,7 @@ Security posture: the agent is not a trusted operator. Prefer commands that vali
 - For repo maintenance or local sanity checks, prefer `mise run smoke`, `mise run verify`, and `mise run coverage:report`
 - Use `schema` or `--describe` when you need the current local contract before running a command.
 - Use `doctor` when auth, config path, profile, or environment state looks inconsistent.
-- Prefer top-level canonical commands like `search`, `whoami`, `list-top-movies`, and `add-transfer` over nested aliases.
+- Prefer top-level canonical commands like `search`, `whoami`, `movies`, `tv-shows`, and `add-transfer` over nested aliases.
 - Use `--fields` when a read command supports it and you only need a stable subset of the payload.
 - Use `--dry-run` on mutating commands when you need a safe preview.
 - Prefer `--json @-` for larger mutating request bodies instead of shell-escaping long inline JSON strings.

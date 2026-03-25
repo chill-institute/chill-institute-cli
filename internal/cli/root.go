@@ -31,6 +31,7 @@ func newRootCommand(app *appContext) *cobra.Command {
 		Example: strings.TrimSpace(`
 chilly auth login
 chilly search --query "dune"
+chilly movies
 chilly schema command search --output json
 `),
 		SilenceUsage:      true,
@@ -102,7 +103,8 @@ chilly schema command search --output json
 	command.AddCommand(newWhoamiCommand(app))
 	command.AddCommand(newSettingsCommand(app))
 	command.AddCommand(newSearchCommand(app))
-	command.AddCommand(newListTopMoviesCommand(app))
+	command.AddCommand(newMoviesCommand(app))
+	command.AddCommand(newTVShowsCommand(app))
 	command.AddCommand(newAddTransferCommand(app))
 	command.AddCommand(newGetTransferCommand(app))
 	command.AddCommand(newUserCommand(app))

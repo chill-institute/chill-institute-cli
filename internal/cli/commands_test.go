@@ -892,11 +892,11 @@ func TestDoctorHandlesInvalidAndErroredAuthChecks(t *testing.T) {
 	})
 }
 
-func TestListTopMoviesUsesStoredToken(t *testing.T) {
+func TestMoviesUsesStoredToken(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/v4/chill.v4.UserService/GetTopMovies" {
+		if request.URL.Path != "/v4/chill.v4.UserService/GetMovies" {
 			t.Fatalf("path = %q", request.URL.Path)
 		}
 		if got := request.Header.Get("Authorization"); got != "Bearer saved-token" {
@@ -916,7 +916,7 @@ func TestListTopMoviesUsesStoredToken(t *testing.T) {
 	}
 
 	stdout := &bytes.Buffer{}
-	command := newListTopMoviesCommand(&appContext{
+	command := newMoviesCommand(&appContext{
 		opts:   &appOptions{configPath: configPath, output: outputJSON},
 		stdin:  strings.NewReader(""),
 		stdout: stdout,
@@ -932,7 +932,7 @@ func TestListTopMoviesUsesStoredToken(t *testing.T) {
 	}
 }
 
-func TestListTopMoviesFieldsFiltersResponse(t *testing.T) {
+func TestMoviesFieldsFiltersResponse(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -950,7 +950,7 @@ func TestListTopMoviesFieldsFiltersResponse(t *testing.T) {
 	}
 
 	stdout := &bytes.Buffer{}
-	command := newListTopMoviesCommand(&appContext{
+	command := newMoviesCommand(&appContext{
 		opts:   &appOptions{configPath: configPath, output: outputJSON},
 		stdin:  strings.NewReader(""),
 		stdout: stdout,
@@ -966,7 +966,7 @@ func TestListTopMoviesFieldsFiltersResponse(t *testing.T) {
 	}
 }
 
-func TestListTopMoviesPrettyOutputShowsReadableSummary(t *testing.T) {
+func TestMoviesPrettyOutputShowsReadableSummary(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -984,7 +984,7 @@ func TestListTopMoviesPrettyOutputShowsReadableSummary(t *testing.T) {
 	}
 
 	stdout := &bytes.Buffer{}
-	command := newListTopMoviesCommand(&appContext{
+	command := newMoviesCommand(&appContext{
 		opts:   &appOptions{configPath: configPath, output: outputPretty},
 		stdin:  strings.NewReader(""),
 		stdout: stdout,
@@ -1000,6 +1000,222 @@ func TestListTopMoviesPrettyOutputShowsReadableSummary(t *testing.T) {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("pretty output missing %q in %q", expected, rendered)
 		}
+	}
+}
+
+func TestTVShowsUsesStoredToken(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/v4/chill.v4.UserService/GetTVShows" {
+			t.Fatalf("path = %q", request.URL.Path)
+		}
+		if got := request.Header.Get("Authorization"); got != "Bearer saved-token" {
+			t.Fatalf("Authorization = %q", got)
+		}
+		_, _ = writer.Write([]byte(`{"shows":[{"title":"The Pitt","imdbId":"tt31938062"}]}`))
+	}))
+	defer server.Close()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	store, err := config.NewStore(configPath)
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+	if err := store.Save(config.Config{APIBaseURL: server.URL, AuthToken: "saved-token"}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	command := newTVShowsCommand(&appContext{
+		opts:   &appOptions{configPath: configPath, output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs(nil)
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if !strings.Contains(stdout.String(), `"title":"The Pitt"`) {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestTVShowDetailUsesIMDbID(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/v4/chill.v4.UserService/GetTVShowDetail" {
+			t.Fatalf("path = %q", request.URL.Path)
+		}
+		var payload map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode payload: %v", err)
+		}
+		if payload["imdbId"] != "tt31938062" {
+			t.Fatalf("imdbId = %v", payload["imdbId"])
+		}
+		_, _ = writer.Write([]byte(`{"show":{"title":"The Pitt","imdbId":"tt31938062"},"seasons":[{"seasonNumber":1,"name":"Season 1"}]}`))
+	}))
+	defer server.Close()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	store, err := config.NewStore(configPath)
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+	if err := store.Save(config.Config{APIBaseURL: server.URL, AuthToken: "saved-token"}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	command := newTVShowsCommand(&appContext{
+		opts:   &appOptions{configPath: configPath, output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"detail", "tt31938062"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if !strings.Contains(stdout.String(), `"title":"The Pitt"`) {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestTVShowSeasonUsesIMDbIDAndSeasonNumber(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/v4/chill.v4.UserService/GetTVShowSeason" {
+			t.Fatalf("path = %q", request.URL.Path)
+		}
+		var payload map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode payload: %v", err)
+		}
+		if payload["imdbId"] != "tt31938062" || payload["seasonNumber"] != float64(1) {
+			t.Fatalf("payload = %#v", payload)
+		}
+		_, _ = writer.Write([]byte(`{"season":{"name":"Season 1","seasonNumber":1},"episodes":[{"episodeNumber":1,"name":"Pilot"}]}`))
+	}))
+	defer server.Close()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	store, err := config.NewStore(configPath)
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+	if err := store.Save(config.Config{APIBaseURL: server.URL, AuthToken: "saved-token"}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	command := newTVShowsCommand(&appContext{
+		opts:   &appOptions{configPath: configPath, output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"season", "tt31938062", "1"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if !strings.Contains(stdout.String(), `"name":"Pilot"`) {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestTVShowEpisodeDownloadUsesIMDbIDSeasonAndEpisode(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/v4/chill.v4.UserService/GetTVShowEpisodeDownload" {
+			t.Fatalf("path = %q", request.URL.Path)
+		}
+		var payload map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode payload: %v", err)
+		}
+		if payload["imdbId"] != "tt31938062" || payload["seasonNumber"] != float64(1) || payload["episodeNumber"] != float64(1) {
+			t.Fatalf("payload = %#v", payload)
+		}
+		_, _ = writer.Write([]byte(`{"searchQuery":"The Pitt S01E01","download":{"title":"The.Pitt.S01E01.1080p.WEB-DL"}}`))
+	}))
+	defer server.Close()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	store, err := config.NewStore(configPath)
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+	if err := store.Save(config.Config{APIBaseURL: server.URL, AuthToken: "saved-token"}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	command := newTVShowsCommand(&appContext{
+		opts:   &appOptions{configPath: configPath, output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"episode-download", "tt31938062", "1", "1"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if !strings.Contains(stdout.String(), `"searchQuery":"The Pitt S01E01"`) {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestTVShowSeasonDownloadsUsesIMDbIDAndSeasonNumber(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/v4/chill.v4.UserService/GetTVShowSeasonDownloads" {
+			t.Fatalf("path = %q", request.URL.Path)
+		}
+		var payload map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode payload: %v", err)
+		}
+		if payload["imdbId"] != "tt31938062" || payload["seasonNumber"] != float64(1) {
+			t.Fatalf("payload = %#v", payload)
+		}
+		_, _ = writer.Write([]byte(`{"seasonSearchQuery":"The Pitt S01","seasonPack":{"title":"The.Pitt.S01.COMPLETE"},"episodes":[{"episodeNumber":1}]}`))
+	}))
+	defer server.Close()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	store, err := config.NewStore(configPath)
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+	if err := store.Save(config.Config{APIBaseURL: server.URL, AuthToken: "saved-token"}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	command := newTVShowsCommand(&appContext{
+		opts:   &appOptions{configPath: configPath, output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	})
+	command.SetArgs([]string{"season-downloads", "tt31938062", "1"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if !strings.Contains(stdout.String(), `"seasonSearchQuery":"The Pitt S01"`) {
+		t.Fatalf("stdout = %q", stdout.String())
 	}
 }
 
@@ -1113,7 +1329,7 @@ func TestUserSettingsGetFieldsFiltersResponse(t *testing.T) {
 		if request.URL.Path != "/v4/chill.v4.UserService/GetUserSettings" {
 			t.Fatalf("path = %q", request.URL.Path)
 		}
-		_, _ = writer.Write([]byte(`{"showTopMovies":true,"sortBy":"seeders","sortDirection":"desc"}`))
+		_, _ = writer.Write([]byte(`{"showMovies":true,"sortBy":"seeders","sortDirection":"desc"}`))
 	}))
 	defer server.Close()
 
@@ -1133,7 +1349,7 @@ func TestUserSettingsGetFieldsFiltersResponse(t *testing.T) {
 		stdout: stdout,
 		stderr: &bytes.Buffer{},
 	})
-	command.SetArgs([]string{"settings", "get", "--fields", "showTopMovies,sortBy"})
+	command.SetArgs([]string{"settings", "get", "--fields", "showMovies,sortBy"})
 	if err := command.Execute(); err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
@@ -1142,7 +1358,7 @@ func TestUserSettingsGetFieldsFiltersResponse(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
 		t.Fatalf("output json decode error: %v", err)
 	}
-	if output["showTopMovies"] != true || output["sortBy"] != "seeders" {
+	if output["showMovies"] != true || output["sortBy"] != "seeders" {
 		t.Fatalf("output = %#v", output)
 	}
 	if _, ok := output["sortDirection"]; ok {
@@ -1157,7 +1373,7 @@ func TestUserSettingsGetPrettyOutputShowsReadableSummary(t *testing.T) {
 		if request.URL.Path != "/v4/chill.v4.UserService/GetUserSettings" {
 			t.Fatalf("path = %q", request.URL.Path)
 		}
-		_, _ = writer.Write([]byte(`{"showTopMovies":true,"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC","disabledIndexerIds":["animetosho"]}`))
+		_, _ = writer.Write([]byte(`{"showMovies":true,"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC","disabledIndexerIds":["animetosho"]}`))
 	}))
 	defer server.Close()
 
@@ -1183,7 +1399,7 @@ func TestUserSettingsGetPrettyOutputShowsReadableSummary(t *testing.T) {
 	}
 
 	rendered := stdout.String()
-	for _, expected := range []string{"User Settings", "showTopMovies: true", "sortBy: SORT_BY_SEEDERS", "disabledIndexerIds: animetosho"} {
+	for _, expected := range []string{"User Settings", "showMovies: true", "sortBy: SORT_BY_SEEDERS", "disabledIndexerIds: animetosho"} {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("pretty output missing %q in %q", expected, rendered)
 		}
@@ -1509,7 +1725,7 @@ func TestUserSettingsSetPatchMergesWithCurrentSettings(t *testing.T) {
 		requestCount++
 		switch request.URL.Path {
 		case "/v4/chill.v4.UserService/GetUserSettings":
-			_, _ = writer.Write([]byte(`{"showTopMovies":false,"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC"}`))
+			_, _ = writer.Write([]byte(`{"showMovies":false,"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC"}`))
 		case "/v4/chill.v4.UserService/SaveUserSettings":
 			var payload map[string]any
 			if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
@@ -1519,8 +1735,8 @@ func TestUserSettingsSetPatchMergesWithCurrentSettings(t *testing.T) {
 			if !ok {
 				t.Fatalf("settings = %#v", payload["settings"])
 			}
-			if settings["showTopMovies"] != true {
-				t.Fatalf("showTopMovies = %v, want true", settings["showTopMovies"])
+			if settings["showMovies"] != true {
+				t.Fatalf("showMovies = %v, want true", settings["showMovies"])
 			}
 			if settings["sortBy"] != "SORT_BY_SEEDERS" {
 				t.Fatalf("sortBy = %v, want %q", settings["sortBy"], "SORT_BY_SEEDERS")
@@ -1528,7 +1744,7 @@ func TestUserSettingsSetPatchMergesWithCurrentSettings(t *testing.T) {
 			if settings["sortDirection"] != "SORT_DIRECTION_DESC" {
 				t.Fatalf("sortDirection = %v, want %q", settings["sortDirection"], "SORT_DIRECTION_DESC")
 			}
-			_, _ = writer.Write([]byte(`{"showTopMovies":true,"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC"}`))
+			_, _ = writer.Write([]byte(`{"showMovies":true,"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC"}`))
 		default:
 			t.Fatalf("path = %q", request.URL.Path)
 		}
@@ -1551,7 +1767,7 @@ func TestUserSettingsSetPatchMergesWithCurrentSettings(t *testing.T) {
 		stdout: stdout,
 		stderr: &bytes.Buffer{},
 	})
-	command.SetArgs([]string{"settings", "set", "show-top-movies", "true"})
+	command.SetArgs([]string{"settings", "set", "show-movies", "true"})
 	if err := command.Execute(); err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
@@ -1563,7 +1779,7 @@ func TestUserSettingsSetPatchMergesWithCurrentSettings(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
 		t.Fatalf("output json decode error: %v", err)
 	}
-	if output["showTopMovies"] != true {
+	if output["showMovies"] != true {
 		t.Fatalf("output = %#v", output)
 	}
 }
@@ -1613,7 +1829,7 @@ func TestUserSettingsSetRejectsMixedJSONAndPatchModes(t *testing.T) {
 		stdout: &bytes.Buffer{},
 		stderr: &bytes.Buffer{},
 	})
-	command.SetArgs([]string{"settings", "set", "show-top-movies", "true", "--json", `{"showTopMovies":true}`})
+	command.SetArgs([]string{"settings", "set", "show-movies", "true", "--json", `{"showMovies":true}`})
 	err := command.Execute()
 	if err == nil {
 		t.Fatal("expected error")

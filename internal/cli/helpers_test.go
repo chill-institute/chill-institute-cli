@@ -99,8 +99,59 @@ func TestNormalizeIDsAndRendererMapping(t *testing.T) {
 	if prettyRendererForProcedure(procedureUserGetIndexers) == nil {
 		t.Fatal("prettyRendererForProcedure(indexers) = nil")
 	}
+	if prettyRendererForProcedure(procedureUserGetMovies) == nil {
+		t.Fatal("prettyRendererForProcedure(movies) = nil")
+	}
+	if prettyRendererForProcedure(procedureUserGetTVShows) == nil {
+		t.Fatal("prettyRendererForProcedure(tv shows) = nil")
+	}
+	if prettyRendererForProcedure(procedureUserGetTVShowDetail) == nil {
+		t.Fatal("prettyRendererForProcedure(tv show detail) = nil")
+	}
+	if prettyRendererForProcedure(procedureUserGetTVShowSeason) == nil {
+		t.Fatal("prettyRendererForProcedure(tv show season) = nil")
+	}
+	if prettyRendererForProcedure(procedureUserGetTVShowEpisodeDownload) == nil {
+		t.Fatal("prettyRendererForProcedure(tv show episode download) = nil")
+	}
+	if prettyRendererForProcedure(procedureUserGetTVShowSeasonDownloads) == nil {
+		t.Fatal("prettyRendererForProcedure(tv show season downloads) = nil")
+	}
 	if prettyRendererForProcedure("unknown") != nil {
 		t.Fatal("prettyRendererForProcedure(unknown) != nil")
+	}
+}
+
+func TestNormalizeIMDbID(t *testing.T) {
+	t.Parallel()
+
+	if got, err := normalizeIMDbID(" tt0944947 "); err != nil || got != "tt0944947" {
+		t.Fatalf("normalizeIMDbID() = %q, %v", got, err)
+	}
+
+	for _, raw := range []string{"", "bad", "ttabc", "tt123", "tt0944947?x=1", "tt0944947%2f"} {
+		raw := raw
+		t.Run(raw, func(t *testing.T) {
+			t.Parallel()
+
+			if _, err := normalizeIMDbID(raw); err == nil {
+				t.Fatalf("normalizeIMDbID(%q) error = nil, want error", raw)
+			}
+		})
+	}
+}
+
+func TestNormalizeEpisodeOrdinal(t *testing.T) {
+	t.Parallel()
+
+	if got, err := normalizeEpisodeOrdinal("1", "season"); err != nil || got != 1 {
+		t.Fatalf("normalizeEpisodeOrdinal() = %d, %v", got, err)
+	}
+	if _, err := normalizeEpisodeOrdinal("0", "season"); err == nil {
+		t.Fatal("normalizeEpisodeOrdinal(0) error = nil, want error")
+	}
+	if _, err := normalizeEpisodeOrdinal("abc", "episode"); err == nil {
+		t.Fatal("normalizeEpisodeOrdinal(abc) error = nil, want error")
 	}
 }
 

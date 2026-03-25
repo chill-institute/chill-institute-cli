@@ -17,8 +17,8 @@ Use this reference for side-effecting commands.
 
 ## Hosted Settings Mutations
 
-- Exact request body: `printf '{"settings":{"showTopMovies":true}}' | chilly user settings set --json @- --dry-run --output json`
-- Bare settings object shorthand: `printf '{"showTopMovies":true}' | chilly user settings set --json @- --dry-run --output json`
+- Exact request body: `printf '{"settings":{"showMovies":true,"showTvShows":true}}' | chilly user settings set --json @- --dry-run --output json`
+- Bare settings object shorthand: `printf '{"showMovies":true,"showTvShows":true}' | chilly user settings set --json @- --dry-run --output json`
 - One-field patch: `chilly user settings set sort-by title --dry-run --output json`
 
 ## Download Folder Mutations

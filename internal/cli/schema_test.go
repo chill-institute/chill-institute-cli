@@ -10,19 +10,20 @@ import (
 func TestRootCommandIncludesSchemaTopLevelCommand(t *testing.T) {
 	command := NewRootCommand()
 	expected := map[string]bool{
-		"add-transfer":    true,
-		"get-transfer":    true,
-		"auth":            true,
-		"completion":      true,
-		"doctor":          true,
-		"list-top-movies": true,
-		"schema":          true,
-		"search":          true,
-		"self-update":     true,
-		"settings":        true,
-		"user":            true,
-		"version":         true,
-		"whoami":          true,
+		"add-transfer": true,
+		"get-transfer": true,
+		"auth":         true,
+		"completion":   true,
+		"doctor":       true,
+		"movies":       true,
+		"tv-shows":     true,
+		"schema":       true,
+		"search":       true,
+		"self-update":  true,
+		"settings":     true,
+		"user":         true,
+		"version":      true,
+		"whoami":       true,
 	}
 
 	for _, subcommand := range command.Commands() {
@@ -573,7 +574,7 @@ func TestSchemaCommandUserSettingsSetReturnsPatchMetadata(t *testing.T) {
 			seenField = true
 		case "value":
 			seenValue = true
-		case "field:showTopMovies":
+		case "field:showMovies":
 			seenPatchFieldSpec = true
 		}
 	}

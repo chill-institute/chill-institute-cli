@@ -76,7 +76,7 @@ func renderSearchPretty(value any) (string, bool, error) {
 	return strings.Join(lines, "\n"), true, nil
 }
 
-func renderTopMoviesPretty(value any) (string, bool, error) {
+func renderMoviesPretty(value any) (string, bool, error) {
 	payload, ok := value.(map[string]any)
 	if !ok {
 		return "", false, nil
@@ -91,7 +91,7 @@ func renderTopMoviesPretty(value any) (string, bool, error) {
 		fmt.Sprintf("Movies: %d", len(movies)),
 	}
 	if len(movies) == 0 {
-		lines = append(lines, "", "No top movies yet.")
+		lines = append(lines, "", "No movies yet.")
 		return strings.Join(lines, "\n"), true, nil
 	}
 
@@ -117,6 +117,220 @@ func renderTopMoviesPretty(value any) (string, bool, error) {
 	}
 	if len(movies) > maxPrettyListItems {
 		lines = append(lines, fmt.Sprintf("... %d more movies omitted. Use --output json or --fields for the full payload.", len(movies)-maxPrettyListItems))
+	}
+
+	return strings.Join(lines, "\n"), true, nil
+}
+
+func renderTVShowsPretty(value any) (string, bool, error) {
+	payload, ok := value.(map[string]any)
+	if !ok {
+		return "", false, nil
+	}
+
+	shows, ok := payload["shows"].([]any)
+	if !ok {
+		return "", false, nil
+	}
+
+	lines := []string{
+		fmt.Sprintf("TV Shows: %d", len(shows)),
+	}
+	if len(shows) == 0 {
+		lines = append(lines, "", "No TV shows yet.")
+		return strings.Join(lines, "\n"), true, nil
+	}
+
+	for index, item := range shows[:min(len(shows), maxPrettyListItems)] {
+		show, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		title := firstString(show, "title", "name")
+		if title == "" {
+			title = fmt.Sprintf("TV Show %d", index+1)
+		}
+		if year := firstString(show, "year"); year != "" {
+			title = fmt.Sprintf("%s (%s)", title, year)
+		}
+
+		lines = append(lines, fmt.Sprintf("%d. %s", index+1, title))
+		lines = appendDetailLine(lines, "IMDb ID", show, "imdbId", "imdb_id")
+		lines = appendDetailLine(lines, "Rating", show, "rating")
+		lines = appendDetailLine(lines, "Status", show, "status")
+		lines = appendJoinedListLine(lines, "Networks", show, "networks")
+	}
+	if len(shows) > maxPrettyListItems {
+		lines = append(lines, fmt.Sprintf("... %d more TV shows omitted. Use --output json or --fields for the full payload.", len(shows)-maxPrettyListItems))
+	}
+
+	return strings.Join(lines, "\n"), true, nil
+}
+
+func renderTVShowDetailPretty(value any) (string, bool, error) {
+	payload, ok := value.(map[string]any)
+	if !ok {
+		return "", false, nil
+	}
+	show, ok := payload["show"].(map[string]any)
+	if !ok {
+		return "", false, nil
+	}
+	seasons, _ := payload["seasons"].([]any)
+
+	title := firstString(show, "title", "name")
+	if title == "" {
+		title = "TV Show"
+	}
+	if year := firstString(show, "year"); year != "" {
+		title = fmt.Sprintf("%s (%s)", title, year)
+	}
+
+	lines := []string{title}
+	lines = appendDetailLine(lines, "IMDb ID", show, "imdbId", "imdb_id")
+	lines = appendDetailLine(lines, "Rating", show, "rating")
+	lines = appendDetailLine(lines, "Status", show, "status")
+	lines = appendDetailLine(lines, "Season Count", show, "seasonCount", "season_count")
+	lines = appendJoinedListLine(lines, "Networks", show, "networks")
+	lines = appendJoinedListLine(lines, "Genres", show, "genres")
+	if overview := firstString(show, "overview"); overview != "" {
+		lines = append(lines, "Overview: "+overview)
+	}
+	lines = append(lines, "")
+	lines = append(lines, fmt.Sprintf("Seasons: %d", len(seasons)))
+	for index, item := range seasons[:min(len(seasons), maxPrettyListItems)] {
+		season, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		number := firstString(season, "seasonNumber", "season_number")
+		name := firstString(season, "name")
+		if name == "" {
+			name = fmt.Sprintf("Season %s", number)
+		}
+		lines = append(lines, fmt.Sprintf("%d. %s", index+1, name))
+		lines = appendDetailLine(lines, "Season Number", season, "seasonNumber", "season_number")
+		lines = appendDetailLine(lines, "Episodes", season, "episodeCount", "episode_count")
+		lines = appendDetailLine(lines, "Air Date", season, "airDate", "air_date")
+	}
+	if len(seasons) > maxPrettyListItems {
+		lines = append(lines, fmt.Sprintf("... %d more seasons omitted. Use --output json or --fields for the full payload.", len(seasons)-maxPrettyListItems))
+	}
+
+	return strings.Join(lines, "\n"), true, nil
+}
+
+func renderTVShowSeasonPretty(value any) (string, bool, error) {
+	payload, ok := value.(map[string]any)
+	if !ok {
+		return "", false, nil
+	}
+	season, ok := payload["season"].(map[string]any)
+	if !ok {
+		return "", false, nil
+	}
+	episodes, _ := payload["episodes"].([]any)
+
+	name := firstString(season, "name")
+	if name == "" {
+		name = "Season"
+	}
+	lines := []string{name}
+	lines = appendDetailLine(lines, "Season Number", season, "seasonNumber", "season_number")
+	lines = appendDetailLine(lines, "Episode Count", season, "episodeCount", "episode_count")
+	lines = appendDetailLine(lines, "Air Date", season, "airDate", "air_date")
+	lines = append(lines, "")
+	lines = append(lines, fmt.Sprintf("Episodes: %d", len(episodes)))
+
+	for index, item := range episodes[:min(len(episodes), maxPrettyListItems)] {
+		episode, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		number := firstString(episode, "episodeNumber", "episode_number")
+		title := firstString(episode, "name")
+		if title == "" {
+			title = fmt.Sprintf("Episode %s", number)
+		}
+		lines = append(lines, fmt.Sprintf("%d. E%s %s", index+1, number, title))
+		lines = appendDetailLine(lines, "Air Date", episode, "airDate", "air_date")
+		lines = appendDetailLine(lines, "Runtime", episode, "runtime")
+		lines = appendDetailLine(lines, "Rating", episode, "rating")
+	}
+	if len(episodes) > maxPrettyListItems {
+		lines = append(lines, fmt.Sprintf("... %d more episodes omitted. Use --output json or --fields for the full payload.", len(episodes)-maxPrettyListItems))
+	}
+
+	return strings.Join(lines, "\n"), true, nil
+}
+
+func renderTVShowEpisodeDownloadPretty(value any) (string, bool, error) {
+	payload, ok := value.(map[string]any)
+	if !ok {
+		return "", false, nil
+	}
+
+	lines := []string{}
+	if query := firstString(payload, "searchQuery", "search_query"); query != "" {
+		lines = append(lines, "Search Query: "+query)
+	}
+
+	download, ok := payload["download"].(map[string]any)
+	if !ok {
+		if len(lines) > 0 {
+			lines = append(lines, "")
+		}
+		lines = append(lines, "No matching episode download found.")
+		return strings.Join(lines, "\n"), true, nil
+	}
+
+	if len(lines) > 0 {
+		lines = append(lines, "")
+	}
+	lines = append(lines, prettyTVShowDownloadLines(download)...)
+	return strings.Join(lines, "\n"), true, nil
+}
+
+func renderTVShowSeasonDownloadsPretty(value any) (string, bool, error) {
+	payload, ok := value.(map[string]any)
+	if !ok {
+		return "", false, nil
+	}
+
+	lines := []string{}
+	if query := firstString(payload, "seasonSearchQuery", "season_search_query"); query != "" {
+		lines = append(lines, "Season Search Query: "+query)
+	}
+
+	if seasonPack, ok := payload["seasonPack"].(map[string]any); ok {
+		lines = append(lines, "")
+		lines = append(lines, "Season Pack")
+		lines = append(lines, prettyTVShowDownloadLinesWithIndent(nil, seasonPack, "   ")...)
+	}
+
+	episodes, _ := payload["episodes"].([]any)
+	if len(lines) > 0 {
+		lines = append(lines, "")
+	}
+	lines = append(lines, fmt.Sprintf("Episode Results: %d", len(episodes)))
+	for index, item := range episodes[:min(len(episodes), maxPrettyListItems)] {
+		result, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		number := firstString(result, "episodeNumber", "episode_number")
+		lines = append(lines, fmt.Sprintf("%d. Episode %s", index+1, number))
+		lines = appendDetailLine(lines, "Search Query", result, "searchQuery", "search_query")
+		if download, ok := result["download"].(map[string]any); ok {
+			lines = append(lines, prettyTVShowDownloadLinesWithIndent(nil, download, "   ")...)
+		} else {
+			lines = append(lines, "   Download: none")
+		}
+	}
+	if len(episodes) > maxPrettyListItems {
+		lines = append(lines, fmt.Sprintf("... %d more episode results omitted. Use --output json or --fields for the full payload.", len(episodes)-maxPrettyListItems))
 	}
 
 	return strings.Join(lines, "\n"), true, nil
@@ -397,8 +611,34 @@ func appendDoctorLine(lines []string, label string, payload map[string]any, keys
 }
 
 func appendDetailLine(lines []string, label string, payload map[string]any, keys ...string) []string {
+	return appendDetailLineWithIndent(lines, "   ", label, payload, keys...)
+}
+
+func appendDetailLineWithIndent(lines []string, indent string, label string, payload map[string]any, keys ...string) []string {
 	if value := firstString(payload, keys...); value != "" {
-		return append(lines, fmt.Sprintf("   %s: %s", label, value))
+		return append(lines, fmt.Sprintf("%s%s: %s", indent, label, value))
+	}
+	return lines
+}
+
+func appendJoinedListLine(lines []string, label string, payload map[string]any, keys ...string) []string {
+	for _, key := range keys {
+		values, ok := payload[key].([]any)
+		if !ok || len(values) == 0 {
+			continue
+		}
+
+		items := make([]string, 0, len(values))
+		for _, value := range values {
+			rendered := prettyValue(value)
+			if rendered != "" && rendered != "null" {
+				items = append(items, rendered)
+			}
+		}
+		if len(items) == 0 {
+			return lines
+		}
+		return append(lines, fmt.Sprintf("   %s: %s", label, strings.Join(items, ", ")))
 	}
 	return lines
 }
@@ -487,6 +727,26 @@ func prettyUserFileLines(file map[string]any) []string {
 	} else if shared, ok := file["is_shared"].(bool); ok {
 		lines = append(lines, fmt.Sprintf("Shared: %t", shared))
 	}
+	return lines
+}
+
+func prettyTVShowDownloadLines(download map[string]any) []string {
+	return prettyTVShowDownloadLinesWithIndent(nil, download, "")
+}
+
+func prettyTVShowDownloadLinesWithIndent(lines []string, download map[string]any, indent string) []string {
+	title := firstString(download, "title")
+	if title == "" {
+		title = "Download"
+	}
+	lines = append(lines, indent+"Title: "+title)
+	lines = appendDetailLineWithIndent(lines, indent+"   ", "Indexer", download, "indexer")
+	lines = appendDetailLineWithIndent(lines, indent+"   ", "Resolution", download, "resolution")
+	lines = appendDetailLineWithIndent(lines, indent+"   ", "Quality", download, "quality")
+	lines = appendDetailLineWithIndent(lines, indent+"   ", "Codec", download, "codec")
+	lines = appendDetailLineWithIndent(lines, indent+"   ", "Seeders", download, "seeders")
+	lines = appendDetailLineWithIndent(lines, indent+"   ", "Size", download, "size")
+	lines = appendDetailLineWithIndent(lines, indent+"   ", "Link", download, "link")
 	return lines
 }
 

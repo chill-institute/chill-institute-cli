@@ -99,7 +99,7 @@ func TestRunUserSettingsSetDryRunSkipsAuthAndReturnsPreview(t *testing.T) {
 	exitCode := Run([]string{
 		"--config", configPath,
 		"user", "settings", "set",
-		"--json", `{"showTopMovies":true}`,
+		"--json", `{"showMovies":true}`,
 		"--dry-run",
 		"--output", "json",
 	}, strings.NewReader(""), stdout, stderr)
@@ -132,8 +132,8 @@ func TestRunUserSettingsSetDryRunSkipsAuthAndReturnsPreview(t *testing.T) {
 	if !ok {
 		t.Fatalf("request.settings = %#v, want object", request["settings"])
 	}
-	if settings["showTopMovies"] != true {
-		t.Fatalf("request.settings.showTopMovies = %v, want true", settings["showTopMovies"])
+	if settings["showMovies"] != true {
+		t.Fatalf("request.settings.showMovies = %v, want true", settings["showMovies"])
 	}
 }
 
@@ -149,7 +149,7 @@ func TestRunUserSettingsSetDryRunAcceptsFullRequestJSONFromStdin(t *testing.T) {
 		"--json", "@-",
 		"--dry-run",
 		"--output", "json",
-	}, strings.NewReader(`{"settings":{"showTopMovies":true}}`), stdout, stderr)
+	}, strings.NewReader(`{"settings":{"showMovies":true}}`), stdout, stderr)
 	if exitCode != int(exitCodeSuccess) {
 		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
 	}
@@ -169,8 +169,8 @@ func TestRunUserSettingsSetDryRunAcceptsFullRequestJSONFromStdin(t *testing.T) {
 	if !ok {
 		t.Fatalf("request.settings = %#v, want object", request["settings"])
 	}
-	if settings["showTopMovies"] != true {
-		t.Fatalf("request.settings.showTopMovies = %v, want true", settings["showTopMovies"])
+	if settings["showMovies"] != true {
+		t.Fatalf("request.settings.showMovies = %v, want true", settings["showMovies"])
 	}
 }
 
@@ -183,7 +183,7 @@ func TestRunUserSettingsSetPatchDryRunSkipsAuthAndReturnsPreview(t *testing.T) {
 	exitCode := Run([]string{
 		"--config", configPath,
 		"user", "settings", "set",
-		"show-top-movies", "true",
+		"show-movies", "true",
 		"--dry-run",
 		"--output", "json",
 	}, strings.NewReader(""), stdout, stderr)
@@ -202,8 +202,8 @@ func TestRunUserSettingsSetPatchDryRunSkipsAuthAndReturnsPreview(t *testing.T) {
 	if !ok {
 		t.Fatalf("request.patch = %#v, want object", output["request"])
 	}
-	if patch["field"] != "showTopMovies" {
-		t.Fatalf("patch.field = %v, want %q", patch["field"], "showTopMovies")
+	if patch["field"] != "showMovies" {
+		t.Fatalf("patch.field = %v, want %q", patch["field"], "showMovies")
 	}
 	if patch["value"] != true {
 		t.Fatalf("patch.value = %v, want true", patch["value"])

@@ -84,10 +84,10 @@ func TestRenderSearchPrettyEmptyResults(t *testing.T) {
 	}
 }
 
-func TestRenderTopMoviesPretty(t *testing.T) {
+func TestRenderMoviesPretty(t *testing.T) {
 	t.Parallel()
 
-	rendered, ok, err := renderTopMoviesPretty(map[string]any{
+	rendered, ok, err := renderMoviesPretty(map[string]any{
 		"movies": []any{
 			map[string]any{
 				"title":      "Dune",
@@ -98,12 +98,187 @@ func TestRenderTopMoviesPretty(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("renderTopMoviesPretty() error = %v", err)
+		t.Fatalf("renderMoviesPretty() error = %v", err)
 	}
 	if !ok {
-		t.Fatal("renderTopMoviesPretty() ok = false, want true")
+		t.Fatal("renderMoviesPretty() ok = false, want true")
 	}
 	for _, fragment := range []string{"Movies: 1", "1. Dune (2021)", "IMDb: 8", "TMDb: 7.5"} {
+		if !strings.Contains(rendered, fragment) {
+			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
+		}
+	}
+}
+
+func TestRenderMoviesPrettyEmpty(t *testing.T) {
+	t.Parallel()
+
+	rendered, ok, err := renderMoviesPretty(map[string]any{"movies": []any{}})
+	if err != nil {
+		t.Fatalf("renderMoviesPretty(empty) error = %v", err)
+	}
+	if !ok {
+		t.Fatal("renderMoviesPretty(empty) ok = false, want true")
+	}
+	if !strings.Contains(rendered, "No movies yet.") {
+		t.Fatalf("rendered = %q", rendered)
+	}
+}
+
+func TestRenderTVShowsPretty(t *testing.T) {
+	t.Parallel()
+
+	rendered, ok, err := renderTVShowsPretty(map[string]any{
+		"shows": []any{
+			map[string]any{
+				"title":    "The Pitt",
+				"year":     "2025",
+				"imdbId":   "tt31938062",
+				"rating":   float64(8.8),
+				"status":   "TV_SHOW_STATUS_RETURNING",
+				"networks": []any{"HBO Max"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("renderTVShowsPretty() error = %v", err)
+	}
+	if !ok {
+		t.Fatal("renderTVShowsPretty() ok = false, want true")
+	}
+	for _, fragment := range []string{"TV Shows: 1", "1. The Pitt (2025)", "IMDb ID: tt31938062", "Networks: HBO Max"} {
+		if !strings.Contains(rendered, fragment) {
+			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
+		}
+	}
+}
+
+func TestRenderTVShowDetailPretty(t *testing.T) {
+	t.Parallel()
+
+	rendered, ok, err := renderTVShowDetailPretty(map[string]any{
+		"show": map[string]any{
+			"title":       "The Pitt",
+			"year":        "2025",
+			"imdbId":      "tt31938062",
+			"rating":      float64(8.8),
+			"status":      "TV_SHOW_STATUS_RETURNING",
+			"seasonCount": float64(1),
+			"networks":    []any{"HBO Max"},
+			"genres":      []any{"Drama"},
+			"overview":    "A tense hospital drama",
+		},
+		"seasons": []any{
+			map[string]any{"seasonNumber": float64(1), "name": "Season 1", "episodeCount": float64(10)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("renderTVShowDetailPretty() error = %v", err)
+	}
+	if !ok {
+		t.Fatal("renderTVShowDetailPretty() ok = false, want true")
+	}
+	for _, fragment := range []string{"The Pitt (2025)", "IMDb ID: tt31938062", "Networks: HBO Max", "Seasons: 1"} {
+		if !strings.Contains(rendered, fragment) {
+			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
+		}
+	}
+}
+
+func TestRenderTVShowSeasonPretty(t *testing.T) {
+	t.Parallel()
+
+	rendered, ok, err := renderTVShowSeasonPretty(map[string]any{
+		"season": map[string]any{
+			"name":         "Season 1",
+			"seasonNumber": float64(1),
+			"episodeCount": float64(2),
+		},
+		"episodes": []any{
+			map[string]any{"episodeNumber": float64(1), "name": "Pilot", "runtime": float64(55)},
+			map[string]any{"episodeNumber": float64(2), "name": "Second", "runtime": float64(54)},
+		},
+	})
+	if err != nil {
+		t.Fatalf("renderTVShowSeasonPretty() error = %v", err)
+	}
+	if !ok {
+		t.Fatal("renderTVShowSeasonPretty() ok = false, want true")
+	}
+	for _, fragment := range []string{"Season 1", "Episodes: 2", "1. E1 Pilot", "2. E2 Second"} {
+		if !strings.Contains(rendered, fragment) {
+			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
+		}
+	}
+}
+
+func TestRenderTVShowEpisodeDownloadPretty(t *testing.T) {
+	t.Parallel()
+
+	rendered, ok, err := renderTVShowEpisodeDownloadPretty(map[string]any{
+		"searchQuery": "The Pitt S01E01",
+		"download": map[string]any{
+			"title":      "The.Pitt.S01E01.1080p.WEB-DL",
+			"indexer":    "knaben",
+			"resolution": "1080p",
+		},
+	})
+	if err != nil {
+		t.Fatalf("renderTVShowEpisodeDownloadPretty() error = %v", err)
+	}
+	if !ok {
+		t.Fatal("renderTVShowEpisodeDownloadPretty() ok = false, want true")
+	}
+	for _, fragment := range []string{"Search Query: The Pitt S01E01", "Title: The.Pitt.S01E01.1080p.WEB-DL", "Indexer: knaben"} {
+		if !strings.Contains(rendered, fragment) {
+			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
+		}
+	}
+}
+
+func TestRenderTVShowEpisodeDownloadPrettyEmpty(t *testing.T) {
+	t.Parallel()
+
+	rendered, ok, err := renderTVShowEpisodeDownloadPretty(map[string]any{
+		"searchQuery": "The Pitt S01E02",
+	})
+	if err != nil {
+		t.Fatalf("renderTVShowEpisodeDownloadPretty(empty) error = %v", err)
+	}
+	if !ok {
+		t.Fatal("renderTVShowEpisodeDownloadPretty(empty) ok = false, want true")
+	}
+	if !strings.Contains(rendered, "No matching episode download found.") {
+		t.Fatalf("rendered = %q", rendered)
+	}
+}
+
+func TestRenderTVShowSeasonDownloadsPretty(t *testing.T) {
+	t.Parallel()
+
+	rendered, ok, err := renderTVShowSeasonDownloadsPretty(map[string]any{
+		"seasonSearchQuery": "The Pitt S01",
+		"seasonPack": map[string]any{
+			"title":   "The.Pitt.S01.COMPLETE.1080p.WEB-DL",
+			"indexer": "knaben",
+		},
+		"episodes": []any{
+			map[string]any{
+				"episodeNumber": float64(1),
+				"searchQuery":   "The Pitt S01E01",
+				"download": map[string]any{
+					"title": "The.Pitt.S01E01.1080p.WEB-DL",
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("renderTVShowSeasonDownloadsPretty() error = %v", err)
+	}
+	if !ok {
+		t.Fatal("renderTVShowSeasonDownloadsPretty() ok = false, want true")
+	}
+	for _, fragment := range []string{"Season Search Query: The Pitt S01", "Season Pack", "Episode Results: 1", "Episode 1"} {
 		if !strings.Contains(rendered, fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
