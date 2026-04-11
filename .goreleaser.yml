@@ -47,12 +47,12 @@ brews:
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     directory: Formula
     homepage: https://chill.institute
-    description: Agent-first command line client for chill.institute
+    description: Agent-first command-line client for chill.institute
     license: MIT
     install: |
       bin.install "chilly"
     test: |
-      system "#{bin}/chilly", "version", "--output", "json"
+      system bin/"chilly", "version", "--output", "json"
 
 release:
   github:
