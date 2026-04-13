@@ -21,7 +21,7 @@ func TestRenderWhoamiPretty(t *testing.T) {
 		t.Fatal("renderWhoamiPretty() ok = false, want true")
 	}
 	for _, fragment := range []string{"Username: sample-user", "Email: user@example.test", "User ID: 123", "Plan: pro"} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -61,7 +61,7 @@ func TestRenderSearchPretty(t *testing.T) {
 		"Peers: 2",
 		"... 1 more results omitted.",
 	} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -104,7 +104,7 @@ func TestRenderMoviesPretty(t *testing.T) {
 		t.Fatal("renderMoviesPretty() ok = false, want true")
 	}
 	for _, fragment := range []string{"Movies: 1", "1. Dune (2021)", "IMDb: 8", "TMDb: 7.5"} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -147,7 +147,7 @@ func TestRenderTVShowsPretty(t *testing.T) {
 		t.Fatal("renderTVShowsPretty() ok = false, want true")
 	}
 	for _, fragment := range []string{"TV Shows: 1", "1. The Pitt (2025)", "IMDb ID: tt31938062", "Networks: HBO Max"} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -179,7 +179,7 @@ func TestRenderTVShowDetailPretty(t *testing.T) {
 		t.Fatal("renderTVShowDetailPretty() ok = false, want true")
 	}
 	for _, fragment := range []string{"The Pitt (2025)", "IMDb ID: tt31938062", "Networks: HBO Max", "Seasons: 1"} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -206,7 +206,7 @@ func TestRenderTVShowSeasonPretty(t *testing.T) {
 		t.Fatal("renderTVShowSeasonPretty() ok = false, want true")
 	}
 	for _, fragment := range []string{"Season 1", "Episodes: 2", "1. E1 Pilot", "2. E2 Second"} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -230,7 +230,7 @@ func TestRenderTVShowEpisodeDownloadPretty(t *testing.T) {
 		t.Fatal("renderTVShowEpisodeDownloadPretty() ok = false, want true")
 	}
 	for _, fragment := range []string{"Search Query: The Pitt S01E01", "Title: The.Pitt.S01E01.1080p.WEB-DL", "Indexer: knaben"} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -279,7 +279,7 @@ func TestRenderTVShowSeasonDownloadsPretty(t *testing.T) {
 		t.Fatal("renderTVShowSeasonDownloadsPretty() ok = false, want true")
 	}
 	for _, fragment := range []string{"Season Search Query: The Pitt S01", "Season Pack", "Episode Results: 1", "Episode 1"} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -311,7 +311,7 @@ func TestRenderUserIndexersPretty(t *testing.T) {
 		t.Fatal("renderUserIndexersPretty() ok = false, want true")
 	}
 	for _, fragment := range []string{"Indexers: 2", "1. YTS [yts]", "Enabled: enabled", "Indexer Status: ready", "2. The Pirate Bay [tbp]", "Indexer Status: degraded"} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -330,10 +330,11 @@ func TestRenderUserSettingsPretty(t *testing.T) {
 	if !ok {
 		t.Fatal("renderUserSettingsPretty() ok = false, want true")
 	}
-	if !strings.Contains(rendered, "User Settings") || !strings.Contains(rendered, "alpha: value") || !strings.Contains(rendered, "zeta: true") {
+	stripped := stripANSI(rendered)
+	if !strings.Contains(stripped, "User Settings") || !strings.Contains(stripped, "alpha: value") || !strings.Contains(stripped, "zeta: true") {
 		t.Fatalf("rendered = %q", rendered)
 	}
-	if strings.Index(rendered, "alpha: value") > strings.Index(rendered, "zeta: true") {
+	if strings.Index(stripped, "alpha: value") > strings.Index(stripped, "zeta: true") {
 		t.Fatalf("rendered = %q, want sorted keys", rendered)
 	}
 }
@@ -356,7 +357,7 @@ func TestRenderDownloadFolderPretty(t *testing.T) {
 		t.Fatal("renderDownloadFolderPretty() ok = false, want true")
 	}
 	for _, fragment := range []string{"Download Folder", "Name: Movies", "ID: 42", "Type: FOLDER", "Shared: true"} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -386,7 +387,7 @@ func TestRenderFolderPretty(t *testing.T) {
 		t.Fatal("renderFolderPretty() ok = false, want true")
 	}
 	for _, fragment := range []string{"Folder", "Name: Movies", "Children: 1", "1. Dune.mkv [VIDEO]", "ID: 99"} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -430,7 +431,7 @@ func TestRenderTransferPretty(t *testing.T) {
 		"File ID: file-42",
 		"ETA Seconds: 12",
 	} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}
@@ -488,7 +489,7 @@ func TestRenderDoctorPretty(t *testing.T) {
 		"Configured: true",
 		"Username: sample-user",
 	} {
-		if !strings.Contains(rendered, fragment) {
+		if !strings.Contains(stripANSI(rendered), fragment) {
 			t.Fatalf("rendered = %q, want fragment %q", rendered, fragment)
 		}
 	}

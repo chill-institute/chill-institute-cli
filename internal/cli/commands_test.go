@@ -487,7 +487,7 @@ func TestSearchCommandPrettyOutputShowsReadableSummary(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	rendered := stdout.String()
+	rendered := stripANSI(stdout.String())
 	for _, expected := range []string{"Results: 1", "Query: dune", "1. Dune", "Size: 1.4 GB", "Magnet: magnet:?xt=urn:btih:dune"} {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("pretty output missing %q in %q", expected, rendered)
@@ -524,7 +524,7 @@ func TestSearchCommandPrettyOutputTruncatesLongLists(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	rendered := stdout.String()
+	rendered := stripANSI(stdout.String())
 	if strings.Contains(rendered, "11. Eleven") {
 		t.Fatalf("pretty output should truncate long lists: %q", rendered)
 	}
@@ -995,7 +995,7 @@ func TestMoviesPrettyOutputShowsReadableSummary(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	rendered := stdout.String()
+	rendered := stripANSI(stdout.String())
 	for _, expected := range []string{"Movies: 2", "1. Dune (2021)", "2. Arrival (2016)"} {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("pretty output missing %q in %q", expected, rendered)
@@ -1314,7 +1314,7 @@ func TestWhoamiPrettyOutputShowsReadableSummary(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	rendered := stdout.String()
+	rendered := stripANSI(stdout.String())
 	for _, expected := range []string{"Username: dunefan", "Email: dune@example.com", "User ID: 123"} {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("pretty output missing %q in %q", expected, rendered)
@@ -1398,7 +1398,7 @@ func TestUserSettingsGetPrettyOutputShowsReadableSummary(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	rendered := stdout.String()
+	rendered := stripANSI(stdout.String())
 	for _, expected := range []string{"User Settings", "showMovies: true", "sortBy: SORT_BY_SEEDERS", "disabledIndexerIds: animetosho"} {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("pretty output missing %q in %q", expected, rendered)
@@ -1438,7 +1438,7 @@ func TestUserIndexersPrettyOutputShowsReadableSummary(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	rendered := stdout.String()
+	rendered := stripANSI(stdout.String())
 	for _, expected := range []string{"Indexers: 3", "1. YTS [yts]", "Enabled: enabled", "Indexer Status: healthy", "2. The Pirate Bay [tbp]", "Indexer Status: degraded", "3. RARBG [rarbg]", "Enabled: disabled", "Indexer Status: down"} {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("pretty output missing %q in %q", expected, rendered)
@@ -1515,7 +1515,7 @@ func TestUserDownloadFolderPrettyOutputShowsReadableSummary(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	rendered := stdout.String()
+	rendered := stripANSI(stdout.String())
 	for _, expected := range []string{"Download Folder", "Name: chill.institute", "ID: 42"} {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("pretty output missing %q in %q", expected, rendered)
@@ -1634,7 +1634,7 @@ func TestUserFolderGetPrettyOutputShowsReadableSummary(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	rendered := stdout.String()
+	rendered := stripANSI(stdout.String())
 	for _, expected := range []string{"Folder", "Name: Movies", "Children: 2", "1. Dune [VIDEO]", "2. Arrival [VIDEO]"} {
 		if !strings.Contains(rendered, expected) {
 			t.Fatalf("pretty output missing %q in %q", expected, rendered)
@@ -1876,7 +1876,7 @@ func TestUserProfilePrettyOutputShowsReadableSummary(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if !strings.Contains(stdout.String(), "Username: dunefan") {
+	if !strings.Contains(stripANSI(stdout.String()), "Username: dunefan") {
 		t.Fatalf("stdout = %q", stdout.String())
 	}
 }

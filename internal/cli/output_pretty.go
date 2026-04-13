@@ -38,10 +38,10 @@ func renderSearchPretty(value any) (string, bool, error) {
 	}
 
 	lines := []string{
-		fmt.Sprintf("Results: %d", len(results)),
+		bold(fmt.Sprintf("Results: %d", len(results))),
 	}
 	if query, ok := stringValue(payload, "query"); ok {
-		lines = append(lines, fmt.Sprintf("Query: %s", query))
+		lines = append(lines, fmt.Sprintf("%s %s", dim("Query:"), query))
 	}
 
 	if len(results) == 0 {
@@ -61,7 +61,7 @@ func renderSearchPretty(value any) (string, bool, error) {
 		}
 
 		lines = append(lines, "")
-		lines = append(lines, fmt.Sprintf("%d. %s", index+1, title))
+		lines = append(lines, bold(fmt.Sprintf("%d. %s", index+1, title)))
 		lines = appendDetailLine(lines, "Indexer", result, "indexerName", "indexer_name")
 		lines = appendDetailLine(lines, "Size", result, "size")
 		lines = appendDetailLine(lines, "Seeds", result, "seeders", "seeds")
@@ -88,7 +88,7 @@ func renderMoviesPretty(value any) (string, bool, error) {
 	}
 
 	lines := []string{
-		fmt.Sprintf("Movies: %d", len(movies)),
+		bold(fmt.Sprintf("Movies: %d", len(movies))),
 	}
 	if len(movies) == 0 {
 		lines = append(lines, "", "No movies yet.")
@@ -111,7 +111,7 @@ func renderMoviesPretty(value any) (string, bool, error) {
 			title = fmt.Sprintf("%s (%s)", title, year)
 		}
 
-		lines = append(lines, fmt.Sprintf("%d. %s", index+1, title))
+		lines = append(lines, bold(fmt.Sprintf("%d. %s", index+1, title)))
 		lines = appendDetailLine(lines, "IMDb", movie, "imdbRating", "imdb_rating")
 		lines = appendDetailLine(lines, "TMDb", movie, "tmdbRating", "tmdb_rating")
 	}
@@ -134,7 +134,7 @@ func renderTVShowsPretty(value any) (string, bool, error) {
 	}
 
 	lines := []string{
-		fmt.Sprintf("TV Shows: %d", len(shows)),
+		bold(fmt.Sprintf("TV Shows: %d", len(shows))),
 	}
 	if len(shows) == 0 {
 		lines = append(lines, "", "No TV shows yet.")
@@ -155,7 +155,7 @@ func renderTVShowsPretty(value any) (string, bool, error) {
 			title = fmt.Sprintf("%s (%s)", title, year)
 		}
 
-		lines = append(lines, fmt.Sprintf("%d. %s", index+1, title))
+		lines = append(lines, bold(fmt.Sprintf("%d. %s", index+1, title)))
 		lines = appendDetailLine(lines, "IMDb ID", show, "imdbId", "imdb_id")
 		lines = appendDetailLine(lines, "Rating", show, "rating")
 		lines = appendDetailLine(lines, "Status", show, "status")
@@ -348,7 +348,7 @@ func renderUserIndexersPretty(value any) (string, bool, error) {
 	}
 
 	lines := []string{
-		fmt.Sprintf("Indexers: %d", len(indexers)),
+		bold(fmt.Sprintf("Indexers: %d", len(indexers))),
 	}
 	if len(indexers) == 0 {
 		lines = append(lines, "", "No indexers configured.")
@@ -420,9 +420,9 @@ func renderUserSettingsPretty(value any) (string, bool, error) {
 	}
 	sort.Strings(keys)
 
-	lines := []string{"User Settings"}
+	lines := []string{bold("User Settings")}
 	for _, key := range keys {
-		lines = append(lines, fmt.Sprintf("%s: %s", key, prettyValue(settings[key])))
+		lines = append(lines, fmt.Sprintf("%s %s", dim(key+":"), prettyValue(settings[key])))
 	}
 	return strings.Join(lines, "\n"), true, nil
 }
@@ -437,7 +437,7 @@ func renderDownloadFolderPretty(value any) (string, bool, error) {
 		return "", false, nil
 	}
 
-	lines := []string{"Download Folder"}
+	lines := []string{bold("Download Folder")}
 	lines = append(lines, prettyUserFileLines(folder)...)
 	return strings.Join(lines, "\n"), true, nil
 }
@@ -457,7 +457,7 @@ func renderFolderPretty(value any) (string, bool, error) {
 		return "", false, nil
 	}
 
-	lines := []string{"Folder"}
+	lines := []string{bold("Folder")}
 	lines = append(lines, prettyUserFileLines(parent)...)
 	lines = append(lines, "")
 	lines = append(lines, fmt.Sprintf("Children: %d", len(files)))
@@ -501,7 +501,7 @@ func renderTransferPretty(value any) (string, bool, error) {
 		return "", false, nil
 	}
 
-	lines := []string{"Transfer"}
+	lines := []string{bold("Transfer")}
 	if status, ok := stringValue(payload, "status"); ok && payload["transfer"] != nil {
 		lines = append(lines, fmt.Sprintf("Request Status: %s", status))
 	}
@@ -547,12 +547,12 @@ func renderDoctorPretty(value any) (string, bool, error) {
 		return "", false, nil
 	}
 
-	lines := []string{"Doctor"}
+	lines := []string{bold("Doctor")}
 	lines = appendDoctorLine(lines, "Status", payload, "status")
 
 	if build, ok := payload["build"].(map[string]any); ok {
 		lines = append(lines, "")
-		lines = append(lines, "Build")
+		lines = append(lines, bold("Build"))
 		lines = appendDoctorLine(lines, "Version", build, "version")
 		lines = appendDoctorLine(lines, "Commit", build, "commit")
 		lines = appendDoctorLine(lines, "Build Date", build, "build_date")
@@ -561,7 +561,7 @@ func renderDoctorPretty(value any) (string, bool, error) {
 
 	if config, ok := payload["config"].(map[string]any); ok {
 		lines = append(lines, "")
-		lines = append(lines, "Config")
+		lines = append(lines, bold("Config"))
 		lines = appendDoctorLine(lines, "Profile", config, "profile")
 		lines = appendDoctorLine(lines, "Path", config, "path")
 		lines = appendDoctorLine(lines, "Exists", config, "exists")
@@ -569,13 +569,13 @@ func renderDoctorPretty(value any) (string, bool, error) {
 
 	if api, ok := payload["api"].(map[string]any); ok {
 		lines = append(lines, "")
-		lines = append(lines, "API")
+		lines = append(lines, bold("API"))
 		lines = appendDoctorLine(lines, "Base URL", api, "base_url")
 	}
 
 	if auth, ok := payload["auth"].(map[string]any); ok {
 		lines = append(lines, "")
-		lines = append(lines, "Auth")
+		lines = append(lines, bold("Auth"))
 		lines = appendDoctorLine(lines, "Configured", auth, "configured")
 		lines = appendDoctorLine(lines, "Status", auth, "status")
 		lines = appendDoctorLine(lines, "Request ID", auth, "request_id")
@@ -595,7 +595,7 @@ func renderDoctorPretty(value any) (string, bool, error) {
 
 func appendIfString(lines []string, label string, payload map[string]any, keys ...string) []string {
 	if value := firstString(payload, keys...); value != "" {
-		return append(lines, fmt.Sprintf("%s: %s", label, value))
+		return append(lines, fmt.Sprintf("%s %s", dim(label+":"), value))
 	}
 	return lines
 }
@@ -603,7 +603,7 @@ func appendIfString(lines []string, label string, payload map[string]any, keys .
 func appendDoctorLine(lines []string, label string, payload map[string]any, keys ...string) []string {
 	for _, key := range keys {
 		if value, ok := payload[key]; ok {
-			lines = append(lines, fmt.Sprintf("%s: %s", label, prettyValue(value)))
+			lines = append(lines, fmt.Sprintf("%s %s", dim(label+":"), prettyValue(value)))
 			return lines
 		}
 	}
@@ -616,7 +616,7 @@ func appendDetailLine(lines []string, label string, payload map[string]any, keys
 
 func appendDetailLineWithIndent(lines []string, indent string, label string, payload map[string]any, keys ...string) []string {
 	if value := firstString(payload, keys...); value != "" {
-		return append(lines, fmt.Sprintf("%s%s: %s", indent, label, value))
+		return append(lines, fmt.Sprintf("%s%s %s", indent, dim(label+":"), value))
 	}
 	return lines
 }
