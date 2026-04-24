@@ -288,7 +288,7 @@ func TestLatestAndByTag(t *testing.T) {
 		payload, err := json.Marshal(Release{
 			TagName: "v1.2.3",
 			Assets: []ReleaseAsset{
-				{Name: "chilly_1.2.3_darwin_arm64.tar.gz", BrowserDownloadURL: "https://github.com/chill-institute/chill-institute-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz"},
+				{Name: "chilly_1.2.3_darwin_arm64.tar.gz", BrowserDownloadURL: "https://github.com/chill-institute/chill-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz"},
 			},
 		})
 		if err != nil {
@@ -319,12 +319,12 @@ func TestDownload(t *testing.T) {
 	t.Parallel()
 
 	client := NewClient(&http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
-		if request.URL.String() != "https://github.com/chill-institute/chill-institute-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz" {
+		if request.URL.String() != "https://github.com/chill-institute/chill-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz" {
 			t.Fatalf("request.URL = %q", request.URL.String())
 		}
 		return binaryResponse([]byte("archive-bytes")), nil
 	})})
-	payload, err := client.Download(context.Background(), "https://github.com/chill-institute/chill-institute-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz")
+	payload, err := client.Download(context.Background(), "https://github.com/chill-institute/chill-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz")
 	if err != nil {
 		t.Fatalf("Download() error = %v", err)
 	}
@@ -345,7 +345,7 @@ func TestDownloadRejectsDisallowedHost(t *testing.T) {
 func TestValidateDownloadURLRejectsUnsupportedScheme(t *testing.T) {
 	t.Parallel()
 
-	if _, err := validateDownloadURL("http://github.com/chill-institute/chill-institute-cli/releases/download/v1.2.3/chilly.tar.gz"); err == nil {
+	if _, err := validateDownloadURL("http://github.com/chill-institute/chill-cli/releases/download/v1.2.3/chilly.tar.gz"); err == nil {
 		t.Fatal("validateDownloadURL() error = nil, want unsupported scheme")
 	}
 }
@@ -354,7 +354,7 @@ func TestValidateDownloadURLAcceptsAllowedHosts(t *testing.T) {
 	t.Parallel()
 
 	for _, rawURL := range []string{
-		"https://github.com/chill-institute/chill-institute-cli/releases/download/v1.2.3/chilly.tar.gz",
+		"https://github.com/chill-institute/chill-cli/releases/download/v1.2.3/chilly.tar.gz",
 		"https://objects.githubusercontent.com/archive",
 		"https://release-assets.githubusercontent.com/archive",
 		"https://github-releases.githubusercontent.com/archive",
@@ -381,7 +381,7 @@ func TestDownloadRejectsUnexpectedStatus(t *testing.T) {
 		}, nil
 	})})
 
-	_, err := client.Download(context.Background(), "https://github.com/chill-institute/chill-institute-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz")
+	_, err := client.Download(context.Background(), "https://github.com/chill-institute/chill-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz")
 	if err == nil || !strings.Contains(err.Error(), "unexpected status 502") {
 		t.Fatalf("Download() error = %v", err)
 	}
@@ -398,7 +398,7 @@ func TestDownloadReadBodyError(t *testing.T) {
 		}, nil
 	})})
 
-	if _, err := client.Download(context.Background(), "https://github.com/chill-institute/chill-institute-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz"); err == nil || !strings.Contains(err.Error(), "read release asset") {
+	if _, err := client.Download(context.Background(), "https://github.com/chill-institute/chill-cli/releases/download/v1.2.3/chilly_1.2.3_darwin_arm64.tar.gz"); err == nil || !strings.Contains(err.Error(), "read release asset") {
 		t.Fatalf("Download() error = %v", err)
 	}
 }

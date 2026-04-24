@@ -1,4 +1,4 @@
-module github.com/chill-institute/chill-institute-cli
+module github.com/chill-institute/chill-cli
 
 go 1.26.2
 

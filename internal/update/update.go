@@ -22,7 +22,7 @@ import (
 
 const (
 	repoOwner      = "chill-institute"
-	repoName       = "cli"
+	repoName       = "chill-cli"
 	binaryName     = "chilly"
 	checksumName   = "checksums.txt"
 	defaultAPIBase = "https://api.github.com"

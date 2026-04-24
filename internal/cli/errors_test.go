@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/chill-institute/chill-institute-cli/internal/rpc"
+	"github.com/chill-institute/chill-cli/internal/rpc"
 )
 
 func TestCLIErrorErrorUsesMessage(t *testing.T) {

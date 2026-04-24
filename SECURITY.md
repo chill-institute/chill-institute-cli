@@ -51,11 +51,11 @@ Security fixes are applied on a best-effort basis to the latest released CLI ver
 ## Verify A Release
 
 ```bash
-VERSION="$(gh release view --repo chill-institute/chill-institute-cli --json tagName -q .tagName)"
+VERSION="$(gh release view --repo chill-institute/chill-cli --json tagName -q .tagName)"
 ARCHIVE="chilly_${VERSION#v}_darwin_arm64.tar.gz"
 
-gh release download "$VERSION" --repo chill-institute/chill-institute-cli --pattern "$ARCHIVE"
-gh attestation verify "$ARCHIVE" --repo chill-institute/chill-institute-cli
+gh release download "$VERSION" --repo chill-institute/chill-cli --pattern "$ARCHIVE"
+gh attestation verify "$ARCHIVE" --repo chill-institute/chill-cli
 ```
 
 Adjust the archive name for your platform when needed.

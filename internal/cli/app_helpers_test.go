@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chill-institute/chill-institute-cli/internal/config"
+	"github.com/chill-institute/chill-cli/internal/config"
 )
 
 func TestNewAppContextDefaults(t *testing.T) {

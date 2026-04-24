@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chill-institute/chill-institute-cli/internal/config"
+	"github.com/chill-institute/chill-cli/internal/config"
 )
 
 func TestRunTVShowsRejectsBadFieldsAndMissingAuth(t *testing.T) {

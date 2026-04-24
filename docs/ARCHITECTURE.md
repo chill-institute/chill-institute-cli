@@ -1,6 +1,6 @@
 # Architecture
 
-This document describes how `chill-institute-cli` is built.
+This document describes how `chill-cli` is built.
 
 ## System Context
 

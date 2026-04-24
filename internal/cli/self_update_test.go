@@ -14,8 +14,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chill-institute/chill-institute-cli/internal/buildinfo"
-	"github.com/chill-institute/chill-institute-cli/internal/update"
+	"github.com/chill-institute/chill-cli/internal/buildinfo"
+	"github.com/chill-institute/chill-cli/internal/update"
 )
 
 type stubReleaseService struct {
