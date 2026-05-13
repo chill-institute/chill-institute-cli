@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 concurrency:
   group: cli-release-main
   cancel-in-progress: false
@@ -13,6 +16,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment: release
     permissions:
       attestations: write
       contents: write
@@ -26,18 +30,6 @@ jobs:
 
       - name: Set up mise
         uses: jdx/mise-action@v4
-
-      - name: Cache Go dependencies
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/.cache/golangci-lint
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('mise.toml', 'go.sum', '.golangci.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ hashFiles('mise.toml', 'go.sum') }}
-            ${{ runner.os }}-go-
 
       - name: Verify
         run: mise run verify
