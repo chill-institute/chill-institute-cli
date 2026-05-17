@@ -56,27 +56,106 @@ func TestResolveDownloadFolderRequests(t *testing.T) {
 		stderr: &strings.Builder{},
 	}
 
-	setRequest, err := resolveDownloadFolderSetRequest(app, `{"downloadFolderId":42}`)
+	setRequest, err := resolveDownloadFolderSetRequest(app, `{"download":{"folderId":42}}`)
 	if err != nil {
 		t.Fatalf("resolveDownloadFolderSetRequest() error = %v", err)
 	}
-	if setRequest["settings"].(map[string]any)["downloadFolderId"] != "42" {
+	if setRequest.Field != "download.folderId" || setRequest.Value != "42" {
 		t.Fatalf("setRequest = %#v", setRequest)
 	}
 
-	clearRequest, err := resolveDownloadFolderClearRequest(app, `{"settings":{"downloadFolderId":null}}`)
+	nestedSetRequest, err := resolveDownloadFolderSetRequest(app, `{"settings":{"download":{"folderId":43}}}`)
+	if err != nil {
+		t.Fatalf("resolveDownloadFolderSetRequest(nested) error = %v", err)
+	}
+	if nestedSetRequest.Field != "download.folderId" || nestedSetRequest.Value != "43" {
+		t.Fatalf("nestedSetRequest = %#v", nestedSetRequest)
+	}
+
+	clearRequest, err := resolveDownloadFolderClearRequest(app, `{"settings":{"download":{"folderId":null}}}`)
 	if err != nil {
 		t.Fatalf("resolveDownloadFolderClearRequest() error = %v", err)
 	}
-	if value := clearRequest["settings"].(map[string]any)["downloadFolderId"]; value != nil {
+	if clearRequest.Field != "download.folderId" || clearRequest.Value != nil {
 		t.Fatalf("clearRequest = %#v", clearRequest)
 	}
 
 	if _, err := resolveDownloadFolderRequest(app, `{}`, false); err == nil {
 		t.Fatal("resolveDownloadFolderRequest() error = nil, want missing field error")
 	}
-	if _, err := resolveDownloadFolderClearRequest(app, `{"settings":{"downloadFolderId":42}}`); err == nil {
+	if _, err := resolveDownloadFolderClearRequest(app, `{"settings":{"download":{"folderId":42}}}`); err == nil {
 		t.Fatal("resolveDownloadFolderClearRequest() error = nil, want null requirement error")
+	}
+}
+
+func TestNormalizeUserSettingsJSONObjectRequiresDomainObjects(t *testing.T) {
+	t.Parallel()
+
+	if _, err := normalizeUserSettingsJSONObject(map[string]any{
+		"search":   map[string]any{},
+		"download": map[string]any{},
+	}, true); err == nil {
+		t.Fatal("normalizeUserSettingsJSONObject(missing catalog) error = nil, want required domains error")
+	}
+	if _, err := normalizeUserSettingsJSONObject(map[string]any{
+		"search":   map[string]any{},
+		"catalog":  "MOVIES_SOURCE_YTS",
+		"download": map[string]any{},
+	}, true); err == nil {
+		t.Fatal("normalizeUserSettingsJSONObject(non-object catalog) error = nil, want required domains error")
+	}
+	if _, err := normalizeUserSettingsJSONObject(map[string]any{
+		"search":     map[string]any{},
+		"catalog":    map[string]any{},
+		"download":   map[string]any{},
+		"unexpected": "42",
+	}, true); err == nil {
+		t.Fatal("normalizeUserSettingsJSONObject(extra top-level field) error = nil, want unsupported field error")
+	}
+}
+
+func TestDecodeUserSettingsRequestRequiresNestedDomainSettings(t *testing.T) {
+	t.Parallel()
+
+	app := &appContext{
+		opts:   &appOptions{output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: &strings.Builder{},
+		stderr: &strings.Builder{},
+	}
+
+	request, err := decodeUserSettingsRequest(app, `{"search":{"filterNastyResults":true,"filterResultsWithNoSeeders":false,"rememberQuickFilters":false,"disabledIndexerIds":[],"resolutionFilters":[],"codecFilters":[],"otherFilters":[],"sortBy":"SORT_BY_TITLE","sortDirection":"SORT_DIRECTION_DESC","searchResultDisplayBehavior":"SEARCH_RESULT_DISPLAY_BEHAVIOR_FASTEST","searchResultTitleBehavior":"SEARCH_RESULT_TITLE_BEHAVIOR_TEXT"},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS","tvShowsSource":"TV_SHOWS_SOURCE_HBO_MAX"},"download":{"folderId":42}}`)
+	if err != nil {
+		t.Fatalf("decodeUserSettingsRequest() error = %v", err)
+	}
+	settings := request["settings"].(map[string]any)
+	if settings["search"].(map[string]any)["sortBy"] != "SORT_BY_TITLE" {
+		t.Fatalf("settings = %#v", settings)
+	}
+	if settings["download"].(map[string]any)["folderId"] != "42" {
+		t.Fatalf("settings = %#v", settings)
+	}
+	if settings["catalog"].(map[string]any)["moviesSource"] != "MOVIES_SOURCE_YTS" {
+		t.Fatalf("settings = %#v", settings)
+	}
+	if settings["catalog"].(map[string]any)["tvShowsSource"] != "TV_SHOWS_SOURCE_HBO_MAX" {
+		t.Fatalf("settings = %#v", settings)
+	}
+
+	wrapped, err := decodeUserSettingsRequest(app, `{"settings":{"search":{"filterNastyResults":true,"filterResultsWithNoSeeders":false,"rememberQuickFilters":false,"disabledIndexerIds":[],"resolutionFilters":[],"codecFilters":[],"otherFilters":[],"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC","searchResultDisplayBehavior":"SEARCH_RESULT_DISPLAY_BEHAVIOR_FASTEST","searchResultTitleBehavior":"SEARCH_RESULT_TITLE_BEHAVIOR_TEXT"},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS","tvShowsSource":"TV_SHOWS_SOURCE_NETFLIX"},"download":{"folderId":42}}}`)
+	if err != nil {
+		t.Fatalf("decodeUserSettingsRequest(wrapped) error = %v", err)
+	}
+	wrappedSettings := wrapped["settings"].(map[string]any)
+	if wrappedSettings["search"].(map[string]any)["filterNastyResults"] != true {
+		t.Fatalf("wrappedSettings = %#v", wrappedSettings)
+	}
+
+	if _, err := decodeUserSettingsRequest(app, `{"settings":{"search":{"filterNastyResults":true}}}`); err == nil {
+		t.Fatal("decodeUserSettingsRequest(partial) error = nil, want required domains error")
+	}
+	if _, err := decodeUserSettingsRequest(app, `{"settings":{"search":{},"catalog":{},"download":{},"unexpected":true}}`); err == nil {
+		t.Fatal("decodeUserSettingsRequest(extra top-level field) error = nil, want unsupported field error")
 	}
 }
 
