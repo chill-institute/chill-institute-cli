@@ -23,42 +23,45 @@ func TestNormalizeUserSettingsPatch(t *testing.T) {
 		t.Fatalf("enumPatch = %#v", enumPatch)
 	}
 
+	downloadPatch, err := normalizeUserSettingsPatch("download.folderId", "42")
+	if err != nil {
+		t.Fatalf("normalizeUserSettingsPatch(download) error = %v", err)
+	}
+	if downloadPatch.Field != "download.folderId" || downloadPatch.Value != "42" {
+		t.Fatalf("downloadPatch = %#v", downloadPatch)
+	}
+
+	if _, err := normalizeUserSettingsPatch("download.folderId", "-1"); err == nil {
+		t.Fatal("normalizeUserSettingsPatch(download negative) error = nil, want invalid value")
+	}
+	if _, err := normalizeUserSettingsPatch("download-folder-id", "42"); err == nil {
+		t.Fatal("normalizeUserSettingsPatch(download-folder-id) error = nil, want unsupported legacy field")
+	}
 	if _, err := normalizeUserSettingsPatch("missing-field", "x"); err == nil {
 		t.Fatal("normalizeUserSettingsPatch() error = nil, want unsupported field")
 	}
 }
 
-func TestNormalizePatchFieldNameAndKebabCase(t *testing.T) {
+func TestNormalizeNullableNonNegativeInt64Value(t *testing.T) {
 	t.Parallel()
 
-	if got := normalizePatchFieldName("filter-nasty-results"); got != "filterNastyResults" {
-		t.Fatalf("normalizePatchFieldName() = %q", got)
+	if value, err := normalizeNullableNonNegativeInt64Value("42"); err != nil || value != "42" {
+		t.Fatalf("normalizeNullableNonNegativeInt64Value(42) = %#v, %v", value, err)
 	}
-	if got := normalizePatchFieldName("filterNastyResults"); got != "filterNastyResults" {
-		t.Fatalf("normalizePatchFieldName(camel) = %q", got)
+	if value, err := normalizeNullableNonNegativeInt64Value("null"); err != nil || value != nil {
+		t.Fatalf("normalizeNullableNonNegativeInt64Value(null) = %#v, %v", value, err)
 	}
-	if got := kebabCase("filterNastyResults"); got != "filter-nasty-results" {
-		t.Fatalf("kebabCase() = %q", got)
+	if value, err := normalizeNullableNonNegativeInt64Value("none"); err != nil || value != nil {
+		t.Fatalf("normalizeNullableNonNegativeInt64Value(none) = %#v, %v", value, err)
 	}
-}
-
-func TestNormalizeNullableInt64Value(t *testing.T) {
-	t.Parallel()
-
-	if value, err := normalizeNullableInt64Value("42"); err != nil || value != "42" {
-		t.Fatalf("normalizeNullableInt64Value(42) = %#v, %v", value, err)
+	if _, err := normalizeNullableNonNegativeInt64Value(""); err == nil {
+		t.Fatal("normalizeNullableNonNegativeInt64Value(empty) error = nil, want error")
 	}
-	if value, err := normalizeNullableInt64Value("null"); err != nil || value != nil {
-		t.Fatalf("normalizeNullableInt64Value(null) = %#v, %v", value, err)
+	if _, err := normalizeNullableNonNegativeInt64Value("nope"); err == nil {
+		t.Fatal("normalizeNullableNonNegativeInt64Value(nope) error = nil, want error")
 	}
-	if value, err := normalizeNullableInt64Value("none"); err != nil || value != nil {
-		t.Fatalf("normalizeNullableInt64Value(none) = %#v, %v", value, err)
-	}
-	if _, err := normalizeNullableInt64Value(""); err == nil {
-		t.Fatal("normalizeNullableInt64Value(empty) error = nil, want error")
-	}
-	if _, err := normalizeNullableInt64Value("nope"); err == nil {
-		t.Fatal("normalizeNullableInt64Value(nope) error = nil, want error")
+	if _, err := normalizeNullableNonNegativeInt64Value("-1"); err == nil {
+		t.Fatal("normalizeNullableNonNegativeInt64Value(-1) error = nil, want error")
 	}
 }
 
@@ -78,10 +81,7 @@ func TestApplyUserSettingsPatchAndCloneJSONObject(t *testing.T) {
 	t.Parallel()
 
 	source := map[string]any{
-		"cardDisplayType": "CARD_DISPLAY_TYPE_COMPACT",
-		"showMovies":      true,
-		"showTvShows":     true,
-		"sortBy":          "SORT_BY_TITLE",
+		"unrelated": "value",
 		"search": map[string]any{
 			"sortBy": "SORT_BY_SEEDERS",
 		},
@@ -109,9 +109,7 @@ func TestApplyUserSettingsPatchAndCloneJSONObject(t *testing.T) {
 	if search["sortBy"] != "SORT_BY_SEEDERS" {
 		t.Fatalf("patched.search.sortBy = %v, want canonical nested value", search["sortBy"])
 	}
-	for _, obsolete := range []string{"cardDisplayType", "showMovies", "showTvShows", "sortBy"} {
-		if _, ok := patched[obsolete]; ok {
-			t.Fatalf("patched kept obsolete or migrated flat field %q: %#v", obsolete, patched)
-		}
+	if _, ok := patched["unrelated"]; ok {
+		t.Fatalf("patched kept non-domain field: %#v", patched)
 	}
 }

@@ -12,7 +12,6 @@ type userSettingsPatch struct {
 }
 
 type userSettingsPatchSpec struct {
-	field       string
 	aliases     []string
 	path        []string
 	valueType   string
@@ -22,7 +21,6 @@ type userSettingsPatchSpec struct {
 
 var userSettingsPatchSpecs = []userSettingsPatchSpec{
 	{
-		field:       "filterNastyResults",
 		aliases:     []string{"filter-nasty-results", "search.filter-nasty-results"},
 		path:        []string{"search", "filterNastyResults"},
 		valueType:   "boolean",
@@ -30,7 +28,6 @@ var userSettingsPatchSpecs = []userSettingsPatchSpec{
 		normalize:   normalizeBooleanValue,
 	},
 	{
-		field:       "filterResultsWithNoSeeders",
 		aliases:     []string{"filter-results-with-no-seeders", "search.filter-results-with-no-seeders"},
 		path:        []string{"search", "filterResultsWithNoSeeders"},
 		valueType:   "boolean",
@@ -38,7 +35,6 @@ var userSettingsPatchSpecs = []userSettingsPatchSpec{
 		normalize:   normalizeBooleanValue,
 	},
 	{
-		field:       "rememberQuickFilters",
 		aliases:     []string{"remember-quick-filters", "search.remember-quick-filters"},
 		path:        []string{"search", "rememberQuickFilters"},
 		valueType:   "boolean",
@@ -46,15 +42,13 @@ var userSettingsPatchSpecs = []userSettingsPatchSpec{
 		normalize:   normalizeBooleanValue,
 	},
 	{
-		field:       "downloadFolderId",
-		aliases:     []string{"download-folder-id", "download.folder-id", "download.folderId"},
+		aliases:     []string{"download.folder-id"},
 		path:        []string{"download", "folderId"},
 		valueType:   "integer-or-null",
 		description: "download folder id, or null to clear it",
-		normalize:   normalizeNullableInt64Value,
+		normalize:   normalizeNullableNonNegativeInt64Value,
 	},
 	{
-		field:       "sortBy",
 		aliases:     []string{"sort-by", "search.sort-by"},
 		path:        []string{"search", "sortBy"},
 		valueType:   "enum",
@@ -69,7 +63,6 @@ var userSettingsPatchSpecs = []userSettingsPatchSpec{
 		}),
 	},
 	{
-		field:       "sortDirection",
 		aliases:     []string{"sort-direction", "search.sort-direction"},
 		path:        []string{"search", "sortDirection"},
 		valueType:   "enum",
@@ -80,7 +73,6 @@ var userSettingsPatchSpecs = []userSettingsPatchSpec{
 		}),
 	},
 	{
-		field:       "searchResultDisplayBehavior",
 		aliases:     []string{"search-result-display-behavior", "search.search-result-display-behavior"},
 		path:        []string{"search", "searchResultDisplayBehavior"},
 		valueType:   "enum",
@@ -91,7 +83,6 @@ var userSettingsPatchSpecs = []userSettingsPatchSpec{
 		}),
 	},
 	{
-		field:       "searchResultTitleBehavior",
 		aliases:     []string{"search-result-title-behavior", "search.search-result-title-behavior"},
 		path:        []string{"search", "searchResultTitleBehavior"},
 		valueType:   "enum",
@@ -102,7 +93,6 @@ var userSettingsPatchSpecs = []userSettingsPatchSpec{
 		}),
 	},
 	{
-		field:       "moviesSource",
 		aliases:     []string{"movies-source", "catalog.movies-source"},
 		path:        []string{"catalog", "moviesSource"},
 		valueType:   "enum",
@@ -120,7 +110,6 @@ var userSettingsPatchSpecs = []userSettingsPatchSpec{
 		}),
 	},
 	{
-		field:       "tvShowsSource",
 		aliases:     []string{"tv-shows-source", "catalog.tv-shows-source"},
 		path:        []string{"catalog", "tvShowsSource"},
 		valueType:   "enum",
@@ -137,29 +126,6 @@ var userSettingsPatchSpecs = []userSettingsPatchSpec{
 			"disney_plus":   "TV_SHOWS_SOURCE_DISNEY_PLUS",
 		}),
 	},
-}
-
-var legacyFlatUserSettingsPaths = map[string][]string{
-	"codecFilters":                {"search", "codecFilters"},
-	"disabledIndexerIds":          {"search", "disabledIndexerIds"},
-	"downloadFolderId":            {"download", "folderId"},
-	"filterNastyResults":          {"search", "filterNastyResults"},
-	"filterResultsWithNoSeeders":  {"search", "filterResultsWithNoSeeders"},
-	"moviesSource":                {"catalog", "moviesSource"},
-	"otherFilters":                {"search", "otherFilters"},
-	"rememberQuickFilters":        {"search", "rememberQuickFilters"},
-	"resolutionFilters":           {"search", "resolutionFilters"},
-	"searchResultDisplayBehavior": {"search", "searchResultDisplayBehavior"},
-	"searchResultTitleBehavior":   {"search", "searchResultTitleBehavior"},
-	"sortBy":                      {"search", "sortBy"},
-	"sortDirection":               {"search", "sortDirection"},
-	"tvShowsSource":               {"catalog", "tvShowsSource"},
-}
-
-var obsoleteFlatUserSettingsFields = []string{
-	"cardDisplayType",
-	"showMovies",
-	"showTvShows",
 }
 
 func normalizeUserSettingsPatch(field string, value string) (userSettingsPatch, error) {
@@ -179,7 +145,7 @@ func normalizeUserSettingsPatch(field string, value string) (userSettingsPatch, 
 }
 
 func applyUserSettingsPatch(settings map[string]any, patch userSettingsPatch) map[string]any {
-	cloned := normalizeLegacyFlatUserSettings(settings)
+	cloned := cloneUserSettingsDomains(settings)
 	setNestedJSONObjectValue(cloned, strings.Split(patch.Field, "."), patch.Value)
 	return cloned
 }
@@ -202,25 +168,14 @@ func supportedUserSettingsPatchHelp() string {
 	lines := make([]string, 0, len(userSettingsPatchSpecs)+1)
 	lines = append(lines, "Supported patch fields:")
 	for _, spec := range userSettingsPatchSpecs {
-		lines = append(lines, fmt.Sprintf("  - %s (%s): %s", kebabCase(spec.field), spec.valueType, spec.description))
+		lines = append(lines, fmt.Sprintf("  - %s (%s): %s", strings.Join(spec.path, "."), spec.valueType, spec.description))
 	}
 	return strings.Join(lines, "\n")
-}
-
-func normalizePatchFieldName(raw string) string {
-	trimmed := strings.TrimSpace(raw)
-	if spec, ok := userSettingsPatchSpecForField(trimmed); ok {
-		return spec.field
-	}
-	return trimmed
 }
 
 func userSettingsPatchSpecForField(raw string) (userSettingsPatchSpec, bool) {
 	trimmed := strings.TrimSpace(raw)
 	for _, spec := range userSettingsPatchSpecs {
-		if strings.EqualFold(trimmed, spec.field) {
-			return spec, true
-		}
 		if strings.EqualFold(trimmed, strings.Join(spec.path, ".")) {
 			return spec, true
 		}
@@ -233,17 +188,6 @@ func userSettingsPatchSpecForField(raw string) (userSettingsPatchSpec, bool) {
 	return userSettingsPatchSpec{}, false
 }
 
-func kebabCase(raw string) string {
-	var builder strings.Builder
-	for index, r := range raw {
-		if index > 0 && r >= 'A' && r <= 'Z' {
-			builder.WriteByte('-')
-		}
-		builder.WriteRune(r)
-	}
-	return strings.ToLower(builder.String())
-}
-
 func normalizeBooleanValue(raw string) (any, error) {
 	parsed, err := strconv.ParseBool(strings.TrimSpace(raw))
 	if err != nil {
@@ -252,18 +196,18 @@ func normalizeBooleanValue(raw string) (any, error) {
 	return parsed, nil
 }
 
-func normalizeNullableInt64Value(raw string) (any, error) {
+func normalizeNullableNonNegativeInt64Value(raw string) (any, error) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
-		return nil, usageError("invalid_user_settings_value", "expected integer or null, got empty value")
+		return nil, usageError("invalid_user_settings_value", "expected non-negative integer or null, got empty value")
 	}
 	if strings.EqualFold(trimmed, "null") || strings.EqualFold(trimmed, "none") {
 		return nil, nil
 	}
 
 	parsed, err := strconv.ParseInt(trimmed, 10, 64)
-	if err != nil {
-		return nil, usageError("invalid_user_settings_value", "expected integer or null, got %q", raw)
+	if err != nil || parsed < 0 {
+		return nil, usageError("invalid_user_settings_value", "expected non-negative integer or null, got %q", raw)
 	}
 	return strconv.FormatInt(parsed, 10), nil
 }
@@ -298,6 +242,17 @@ func cloneJSONObject(source map[string]any) map[string]any {
 	return cloned
 }
 
+func cloneUserSettingsDomains(settings map[string]any) map[string]any {
+	cloned := map[string]any{}
+	for _, domain := range []string{"search", "catalog", "download"} {
+		value, ok := settings[domain].(map[string]any)
+		if ok {
+			cloned[domain] = cloneJSONObject(value)
+		}
+	}
+	return cloned
+}
+
 func setNestedJSONObjectValue(target map[string]any, path []string, value any) {
 	if len(path) == 0 {
 		return
@@ -312,37 +267,4 @@ func setNestedJSONObjectValue(target map[string]any, path []string, value any) {
 		target[path[0]] = next
 	}
 	setNestedJSONObjectValue(next, path[1:], value)
-}
-
-func hasNestedJSONObjectValue(target map[string]any, path []string) bool {
-	if len(path) == 0 {
-		return false
-	}
-	if len(path) == 1 {
-		_, ok := target[path[0]]
-		return ok
-	}
-	next, ok := target[path[0]].(map[string]any)
-	if !ok {
-		return false
-	}
-	return hasNestedJSONObjectValue(next, path[1:])
-}
-
-func normalizeLegacyFlatUserSettings(settings map[string]any) map[string]any {
-	cloned := cloneJSONObject(settings)
-	for _, field := range obsoleteFlatUserSettingsFields {
-		delete(cloned, field)
-	}
-	for field, path := range legacyFlatUserSettingsPaths {
-		value, ok := cloned[field]
-		if !ok {
-			continue
-		}
-		delete(cloned, field)
-		if !hasNestedJSONObjectValue(cloned, path) {
-			setNestedJSONObjectValue(cloned, path, value)
-		}
-	}
-	return cloned
 }

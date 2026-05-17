@@ -113,8 +113,8 @@ Save user settings in one of two modes:
 		Example: strings.TrimSpace(`
 chilly user settings set filter-nasty-results true
 chilly user settings set sort-by title --dry-run --output json
-chilly user settings set --json '{"search":{"filterNastyResults":true},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS"},"download":{"folderId":42}}'
-printf '{"settings":{"search":{"filterNastyResults":true},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS"},"download":{"folderId":42}}}' | chilly user settings set --json @- --output json
+chilly user settings set --json '{"search":{"filterNastyResults":true,"filterResultsWithNoSeeders":false,"rememberQuickFilters":false,"disabledIndexerIds":[],"resolutionFilters":[],"codecFilters":[],"otherFilters":[],"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC","searchResultDisplayBehavior":"SEARCH_RESULT_DISPLAY_BEHAVIOR_FASTEST","searchResultTitleBehavior":"SEARCH_RESULT_TITLE_BEHAVIOR_TEXT"},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS","tvShowsSource":"TV_SHOWS_SOURCE_NETFLIX"},"download":{"folderId":42}}'
+printf '{"settings":{"search":{"filterNastyResults":true,"filterResultsWithNoSeeders":false,"rememberQuickFilters":false,"disabledIndexerIds":[],"resolutionFilters":[],"codecFilters":[],"otherFilters":[],"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC","searchResultDisplayBehavior":"SEARCH_RESULT_DISPLAY_BEHAVIOR_FASTEST","searchResultTitleBehavior":"SEARCH_RESULT_TITLE_BEHAVIOR_TEXT"},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS","tvShowsSource":"TV_SHOWS_SOURCE_NETFLIX"},"download":{"folderId":42}}}' | chilly user settings set --json @- --output json
 `),
 		Args: allowDescribeArgs(cobra.MaximumNArgs(2)),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -402,7 +402,19 @@ func decodeDownloadFolderSettingsObject(app *appContext, rawRequest string) (map
 }
 
 func normalizeUserSettingsJSONObject(settings map[string]any, requireAllDomains bool) (map[string]any, error) {
-	normalized := normalizeLegacyFlatUserSettings(settings)
+	normalized := cloneJSONObject(settings)
+	allowedDomains := map[string]struct{}{
+		"catalog":  {},
+		"download": {},
+		"search":   {},
+	}
+	if requireAllDomains {
+		for field := range normalized {
+			if _, ok := allowedDomains[field]; !ok {
+				return nil, usageError("invalid_json_payload", "unsupported settings field %q", field)
+			}
+		}
+	}
 	if download, ok := normalized["download"].(map[string]any); ok {
 		if rawFolderID, ok := download["folderId"]; ok {
 			folderID, err := normalizeDownloadFolderJSONValue(rawFolderID, true)
@@ -428,15 +440,14 @@ func downloadFolderJSONValue(settings map[string]any) (any, bool) {
 		value, found := download["folderId"]
 		return value, found
 	}
-	value, found := settings["downloadFolderId"]
-	return value, found
+	return nil, false
 }
 
 func normalizeDownloadFolderJSONValue(value any, allowNull bool) (any, error) {
 	switch typed := value.(type) {
 	case nil:
 		if !allowNull {
-			return nil, usageError("invalid_json_payload", "downloadFolderId must be an integer")
+			return nil, usageError("invalid_json_payload", "download.folderId must be an integer")
 		}
 		return nil, nil
 	case string:
@@ -447,14 +458,14 @@ func normalizeDownloadFolderJSONValue(value any, allowNull bool) (any, error) {
 		return strconv.FormatInt(id, 10), nil
 	case float64:
 		if math.IsNaN(typed) || math.IsInf(typed, 0) || typed != math.Trunc(typed) || typed < 0 || typed > math.MaxInt64 {
-			return nil, usageError("invalid_json_payload", "downloadFolderId must be a non-negative integer")
+			return nil, usageError("invalid_json_payload", "download.folderId must be a non-negative integer")
 		}
 		return strconv.FormatInt(int64(typed), 10), nil
 	default:
 		if allowNull {
-			return nil, usageError("invalid_json_payload", "downloadFolderId must be a non-negative integer or null")
+			return nil, usageError("invalid_json_payload", "download.folderId must be a non-negative integer or null")
 		}
-		return nil, usageError("invalid_json_payload", "downloadFolderId must be a non-negative integer")
+		return nil, usageError("invalid_json_payload", "download.folderId must be a non-negative integer")
 	}
 }
 

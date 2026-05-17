@@ -56,7 +56,7 @@ func TestResolveDownloadFolderRequests(t *testing.T) {
 		stderr: &strings.Builder{},
 	}
 
-	setRequest, err := resolveDownloadFolderSetRequest(app, `{"downloadFolderId":42}`)
+	setRequest, err := resolveDownloadFolderSetRequest(app, `{"download":{"folderId":42}}`)
 	if err != nil {
 		t.Fatalf("resolveDownloadFolderSetRequest() error = %v", err)
 	}
@@ -83,7 +83,7 @@ func TestResolveDownloadFolderRequests(t *testing.T) {
 	if _, err := resolveDownloadFolderRequest(app, `{}`, false); err == nil {
 		t.Fatal("resolveDownloadFolderRequest() error = nil, want missing field error")
 	}
-	if _, err := resolveDownloadFolderClearRequest(app, `{"settings":{"downloadFolderId":42}}`); err == nil {
+	if _, err := resolveDownloadFolderClearRequest(app, `{"settings":{"download":{"folderId":42}}}`); err == nil {
 		t.Fatal("resolveDownloadFolderClearRequest() error = nil, want null requirement error")
 	}
 }
@@ -104,9 +104,17 @@ func TestNormalizeUserSettingsJSONObjectRequiresDomainObjects(t *testing.T) {
 	}, true); err == nil {
 		t.Fatal("normalizeUserSettingsJSONObject(non-object catalog) error = nil, want required domains error")
 	}
+	if _, err := normalizeUserSettingsJSONObject(map[string]any{
+		"search":     map[string]any{},
+		"catalog":    map[string]any{},
+		"download":   map[string]any{},
+		"unexpected": "42",
+	}, true); err == nil {
+		t.Fatal("normalizeUserSettingsJSONObject(extra top-level field) error = nil, want unsupported field error")
+	}
 }
 
-func TestDecodeUserSettingsRequestNormalizesLegacyFlatSettings(t *testing.T) {
+func TestDecodeUserSettingsRequestRequiresNestedDomainSettings(t *testing.T) {
 	t.Parallel()
 
 	app := &appContext{
@@ -116,14 +124,11 @@ func TestDecodeUserSettingsRequestNormalizesLegacyFlatSettings(t *testing.T) {
 		stderr: &strings.Builder{},
 	}
 
-	request, err := decodeUserSettingsRequest(app, `{"sortBy":"SORT_BY_TITLE","downloadFolderId":42,"moviesSource":"MOVIES_SOURCE_YTS","tvShowsSource":"TV_SHOWS_SOURCE_HBO_MAX"}`)
+	request, err := decodeUserSettingsRequest(app, `{"search":{"filterNastyResults":true,"filterResultsWithNoSeeders":false,"rememberQuickFilters":false,"disabledIndexerIds":[],"resolutionFilters":[],"codecFilters":[],"otherFilters":[],"sortBy":"SORT_BY_TITLE","sortDirection":"SORT_DIRECTION_DESC","searchResultDisplayBehavior":"SEARCH_RESULT_DISPLAY_BEHAVIOR_FASTEST","searchResultTitleBehavior":"SEARCH_RESULT_TITLE_BEHAVIOR_TEXT"},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS","tvShowsSource":"TV_SHOWS_SOURCE_HBO_MAX"},"download":{"folderId":42}}`)
 	if err != nil {
 		t.Fatalf("decodeUserSettingsRequest() error = %v", err)
 	}
 	settings := request["settings"].(map[string]any)
-	if settings["sortBy"] != nil || settings["downloadFolderId"] != nil || settings["moviesSource"] != nil || settings["tvShowsSource"] != nil {
-		t.Fatalf("legacy settings remained flat = %#v", settings)
-	}
 	if settings["search"].(map[string]any)["sortBy"] != "SORT_BY_TITLE" {
 		t.Fatalf("settings = %#v", settings)
 	}
@@ -137,7 +142,7 @@ func TestDecodeUserSettingsRequestNormalizesLegacyFlatSettings(t *testing.T) {
 		t.Fatalf("settings = %#v", settings)
 	}
 
-	wrapped, err := decodeUserSettingsRequest(app, `{"settings":{"filterNastyResults":true,"moviesSource":"MOVIES_SOURCE_YTS","downloadFolderId":42}}`)
+	wrapped, err := decodeUserSettingsRequest(app, `{"settings":{"search":{"filterNastyResults":true,"filterResultsWithNoSeeders":false,"rememberQuickFilters":false,"disabledIndexerIds":[],"resolutionFilters":[],"codecFilters":[],"otherFilters":[],"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC","searchResultDisplayBehavior":"SEARCH_RESULT_DISPLAY_BEHAVIOR_FASTEST","searchResultTitleBehavior":"SEARCH_RESULT_TITLE_BEHAVIOR_TEXT"},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS","tvShowsSource":"TV_SHOWS_SOURCE_NETFLIX"},"download":{"folderId":42}}}`)
 	if err != nil {
 		t.Fatalf("decodeUserSettingsRequest(wrapped) error = %v", err)
 	}
@@ -146,8 +151,11 @@ func TestDecodeUserSettingsRequestNormalizesLegacyFlatSettings(t *testing.T) {
 		t.Fatalf("wrappedSettings = %#v", wrappedSettings)
 	}
 
-	if _, err := decodeUserSettingsRequest(app, `{"settings":{"filterNastyResults":true}}`); err == nil {
+	if _, err := decodeUserSettingsRequest(app, `{"settings":{"search":{"filterNastyResults":true}}}`); err == nil {
 		t.Fatal("decodeUserSettingsRequest(partial) error = nil, want required domains error")
+	}
+	if _, err := decodeUserSettingsRequest(app, `{"settings":{"search":{},"catalog":{},"download":{},"unexpected":true}}`); err == nil {
+		t.Fatal("decodeUserSettingsRequest(extra top-level field) error = nil, want unsupported field error")
 	}
 }
 

@@ -99,7 +99,7 @@ func TestRunUserSettingsSetDryRunSkipsAuthAndReturnsPreview(t *testing.T) {
 	exitCode := Run([]string{
 		"--config", configPath,
 		"user", "settings", "set",
-		"--json", `{"search":{"filterNastyResults":true},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS"},"download":{"folderId":42}}`,
+		"--json", `{"search":{"filterNastyResults":true,"filterResultsWithNoSeeders":false,"rememberQuickFilters":false,"disabledIndexerIds":[],"resolutionFilters":[],"codecFilters":[],"otherFilters":[],"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC","searchResultDisplayBehavior":"SEARCH_RESULT_DISPLAY_BEHAVIOR_FASTEST","searchResultTitleBehavior":"SEARCH_RESULT_TITLE_BEHAVIOR_TEXT"},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS","tvShowsSource":"TV_SHOWS_SOURCE_NETFLIX"},"download":{"folderId":42}}`,
 		"--dry-run",
 		"--output", "json",
 	}, strings.NewReader(""), stdout, stderr)
@@ -159,7 +159,7 @@ func TestRunUserSettingsSetDryRunAcceptsFullRequestJSONFromStdin(t *testing.T) {
 		"--json", "@-",
 		"--dry-run",
 		"--output", "json",
-	}, strings.NewReader(`{"settings":{"search":{"filterNastyResults":true},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS"},"download":{"folderId":42}}}`), stdout, stderr)
+	}, strings.NewReader(`{"settings":{"search":{"filterNastyResults":true,"filterResultsWithNoSeeders":false,"rememberQuickFilters":false,"disabledIndexerIds":[],"resolutionFilters":[],"codecFilters":[],"otherFilters":[],"sortBy":"SORT_BY_SEEDERS","sortDirection":"SORT_DIRECTION_DESC","searchResultDisplayBehavior":"SEARCH_RESULT_DISPLAY_BEHAVIOR_FASTEST","searchResultTitleBehavior":"SEARCH_RESULT_TITLE_BEHAVIOR_TEXT"},"catalog":{"moviesSource":"MOVIES_SOURCE_YTS","tvShowsSource":"TV_SHOWS_SOURCE_NETFLIX"},"download":{"folderId":42}}}`), stdout, stderr)
 	if exitCode != int(exitCodeSuccess) {
 		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
 	}
@@ -412,7 +412,7 @@ func TestRunUserDownloadFolderSetDryRunAcceptsJSONPayloadFromStdin(t *testing.T)
 		"--json", "@-",
 		"--dry-run",
 		"--output", "json",
-	}, strings.NewReader(`{"downloadFolderId":42}`), stdout, stderr)
+	}, strings.NewReader(`{"download":{"folderId":42}}`), stdout, stderr)
 	if exitCode != int(exitCodeSuccess) {
 		t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeSuccess)
 	}
