@@ -84,9 +84,9 @@ Normal CLI change flow:
 2. Run `mise run verify`
 3. Open or update a pull request. GitHub Actions runs `Verify` on pull requests.
 4. Merge to `main`. GitHub Actions runs `Main`, which re-verifies the repo, runs `semantic-release`, creates the next `vX.Y.Z` tag from conventional commits, and then runs GoReleaser to publish release archives, create the GitHub release, update the Homebrew tap, and publish npm packages under `@chill-institute/cli`.
-5. The existing tag-based `Release` workflow remains available as a fallback for intentionally pushed tags.
+5. The existing tag-based `Release` workflow remains available as a fallback for intentionally pushed tags. npm trusted publishing is configured for the normal `Main` workflow only.
 
-The npm package name is `@chill-institute/cli`; its installed binary remains `chilly`. Configure npm Trusted Publishing for the root package and generated platform packages before the first publish.
+The npm package name is `@chill-institute/cli`; its installed binary remains `chilly`. npm Trusted Publishing requires each package to exist before trust can be configured, so package bootstrap is an operator setup step.
 
 Versioning notes:
 
