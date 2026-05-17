@@ -269,6 +269,18 @@ func TestNormalizeJSONSupportsNDJSONArrays(t *testing.T) {
 	}
 }
 
+func TestNormalizeJSONSupportsEmptyNDJSONArrays(t *testing.T) {
+	t.Parallel()
+
+	normalized, err := normalizeJSON([]byte(`[]`), outputNDJSON, nil)
+	if err != nil {
+		t.Fatalf("normalizeJSON(empty ndjson array) error = %v", err)
+	}
+	if len(normalized) != 0 {
+		t.Fatalf("normalized = %q, want empty output", normalized)
+	}
+}
+
 func TestNormalizeJSONSupportsNDJSONResponseCollections(t *testing.T) {
 	t.Parallel()
 
@@ -295,6 +307,61 @@ func TestNormalizeJSONSupportsNDJSONResponseCollections(t *testing.T) {
 	context, ok := first["context"].(map[string]any)
 	if !ok || context["query"] != "dune" {
 		t.Fatalf("context = %#v", first["context"])
+	}
+}
+
+func TestNormalizeJSONSupportsEmptyNDJSONResponseCollections(t *testing.T) {
+	t.Parallel()
+
+	normalized, err := normalizeJSON([]byte(`{"query":"dune","results":[]}`), outputNDJSON, nil)
+	if err != nil {
+		t.Fatalf("normalizeJSON(empty ndjson object collection) error = %v", err)
+	}
+	if len(normalized) != 0 {
+		t.Fatalf("normalized = %q, want empty output", normalized)
+	}
+}
+
+func TestWriteSelectedResponseBodySkipsEmptyNDJSON(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	app := &appContext{
+		opts:   &appOptions{output: outputNDJSON},
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	}
+	if err := app.writeSelectedResponseBody([]byte(`{"results":[]}`), nil); err != nil {
+		t.Fatalf("writeSelectedResponseBody(empty ndjson) error = %v", err)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty output", stdout.String())
+	}
+}
+
+func TestWriteSelectedResponseBodyWithRendererUsesNDJSONPath(t *testing.T) {
+	t.Parallel()
+
+	stdout := &bytes.Buffer{}
+	app := &appContext{
+		opts:   &appOptions{output: outputNDJSON},
+		stdout: stdout,
+		stderr: &bytes.Buffer{},
+	}
+	if err := app.writeSelectedResponseBodyWithRenderer([]byte(`{"query":"dune","results":[{"title":"Dune"}]}`), nil, func(value any) (string, bool, error) {
+		return "pretty output", true, nil
+	}); err != nil {
+		t.Fatalf("writeSelectedResponseBodyWithRenderer(ndjson) error = %v", err)
+	}
+	if strings.TrimSpace(stdout.String()) == "pretty output" {
+		t.Fatal("ndjson output used pretty renderer")
+	}
+	var output map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &output); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v, stdout = %q", err, stdout.String())
+	}
+	if output["path"] != "results" {
+		t.Fatalf("output = %#v, want ndjson collection envelope", output)
 	}
 }
 

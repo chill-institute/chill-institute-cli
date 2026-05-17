@@ -190,12 +190,15 @@ func (app *appContext) writeSelectedResponseBody(body []byte, selection *fieldSe
 	if err != nil {
 		return wrapInternalError("response_normalize_failed", "normalize response output", err)
 	}
+	if len(normalized) == 0 {
+		return nil
+	}
 	_, err = fmt.Fprintln(app.stdout, string(normalized))
 	return wrapInternalError("stdout_write_failed", "write response output", err)
 }
 
 func (app *appContext) writeSelectedResponseBodyWithRenderer(body []byte, selection *fieldSelection, renderer prettyRenderer) error {
-	if app.opts.output == outputJSON || selection != nil || renderer == nil {
+	if wantsJSONOutput(app.opts.output) || selection != nil || renderer == nil {
 		return app.writeSelectedResponseBody(body, selection)
 	}
 
@@ -344,6 +347,9 @@ func marshalNDJSON(value any) ([]byte, error) {
 	lines := make([][]byte, 0)
 	switch typed := value.(type) {
 	case []any:
+		if len(typed) == 0 {
+			return nil, nil
+		}
 		for _, item := range typed {
 			encoded, err := json.Marshal(item)
 			if err != nil {
@@ -352,7 +358,11 @@ func marshalNDJSON(value any) ([]byte, error) {
 			lines = append(lines, encoded)
 		}
 	case map[string]any:
-		for _, stream := range ndjsonStreams(typed) {
+		streams, hasArray := ndjsonStreams(typed)
+		if hasArray && len(streams) == 0 {
+			return nil, nil
+		}
+		for _, stream := range streams {
 			encoded, err := json.Marshal(stream)
 			if err != nil {
 				return nil, err
@@ -370,10 +380,12 @@ func marshalNDJSON(value any) ([]byte, error) {
 	return bytes.Join(lines, []byte("\n")), nil
 }
 
-func ndjsonStreams(value map[string]any) []any {
+func ndjsonStreams(value map[string]any) ([]any, bool) {
 	context := make(map[string]any)
+	hasArray := false
 	for key, item := range value {
 		if _, ok := item.([]any); ok {
+			hasArray = true
 			continue
 		}
 		context[key] = item
@@ -394,7 +406,7 @@ func ndjsonStreams(value map[string]any) []any {
 			})
 		}
 	}
-	return streams
+	return streams, hasArray
 }
 
 func openBrowser(rawURL string) error {
