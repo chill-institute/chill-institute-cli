@@ -1,8 +1,13 @@
 package cli
 
 import (
+	"bytes"
+	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/chill-institute/chill-cli/internal/config"
 )
 
 func TestResolveAuthLoginInputFromJSON(t *testing.T) {
@@ -148,9 +153,16 @@ func TestWebAuthTokenURLDerivesPublicHostFromAPIBaseURL(t *testing.T) {
 		input  string
 		output string
 	}{
-		{name: "api subdomain", input: "https://api.chill.institute", output: "https://chill.institute/auth/cli-token"},
-		{name: "non api host", input: "https://staging.chill.institute", output: "https://staging.chill.institute/auth/cli-token"},
-		{name: "custom port", input: "http://api.localhost:3000", output: "http://localhost:3000/auth/cli-token"},
+		{name: "production api host", input: "https://api.chill.institute", output: "https://chill.institute/auth/cli-token"},
+		{name: "production api host with port", input: "https://api.chill.institute:8443", output: "https://chill.institute:8443/auth/cli-token"},
+		{name: "staging api host", input: "https://staging-api.chill.institute", output: "https://staging.chill.institute/auth/cli-token"},
+		{name: "staging api host with port", input: "https://staging-api.chill.institute:8443", output: "https://staging.chill.institute:8443/auth/cli-token"},
+		{name: "production web host", input: "https://chill.institute", output: "https://chill.institute/auth/cli-token"},
+		{name: "staging web host", input: "https://staging.chill.institute", output: "https://staging.chill.institute/auth/cli-token"},
+		{name: "localhost", input: "http://localhost:8080", output: "http://localhost:8080/auth/cli-token"},
+		{name: "localhost api host", input: "http://api.localhost:3000", output: "http://localhost:3000/auth/cli-token"},
+		{name: "dev api host with port", input: "https://api.chill.test:4443", output: "https://chill.test:4443/auth/cli-token"},
+		{name: "dev web host with port", input: "https://chill.test:4443", output: "https://chill.test:4443/auth/cli-token"},
 	}
 
 	for _, tc := range testCases {
@@ -169,10 +181,50 @@ func TestWebAuthTokenURLDerivesPublicHostFromAPIBaseURL(t *testing.T) {
 	}
 }
 
+func TestAuthLoginDryRunOutputsWebTokenLoginURL(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	store, err := config.NewStore(configPath)
+	if err != nil {
+		t.Fatalf("NewStore() error = %v", err)
+	}
+	if err := store.Save(config.Config{APIBaseURL: "https://staging-api.chill.institute:8443"}); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	app := &appContext{
+		opts:   &appOptions{configPath: configPath, output: outputJSON},
+		stdin:  strings.NewReader(""),
+		stdout: stdout,
+		stderr: &strings.Builder{},
+	}
+
+	command := newAuthLoginCommand(app)
+	command.SetArgs([]string{"--dry-run"})
+	if err := command.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	var output struct {
+		Request map[string]any `json:"request"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
+		t.Fatalf("output json decode error: %v", err)
+	}
+	if output.Request["mode"] != "web_token" {
+		t.Fatalf("request.mode = %v, want web_token", output.Request["mode"])
+	}
+	if output.Request["login_url"] != "https://staging.chill.institute:8443/auth/cli-token" {
+		t.Fatalf("request.login_url = %v", output.Request["login_url"])
+	}
+}
+
 func TestWebAuthTokenURLRejectsInvalidInput(t *testing.T) {
 	t.Parallel()
 
-	for _, input := range []string{"", "api.chill.institute"} {
+	for _, input := range []string{"", "api.chill.institute", "ftp://api.chill.institute", "https://api.chill.institute/path"} {
 		input := input
 		t.Run(input, func(t *testing.T) {
 			t.Parallel()
