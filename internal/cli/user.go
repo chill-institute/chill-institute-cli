@@ -169,7 +169,7 @@ func newUserTransferCommand(app *appContext) *cobra.Command {
 			return runAddTransfer(app, "user transfer add", transferURL, rawRequest, dryRun)
 		},
 	}
-	addCommand.Flags().StringVar(&transferURL, "url", "", "magnet or URL")
+	addCommand.Flags().StringVar(&transferURL, "url", "", addTransferURLDescription)
 	addCommand.Flags().StringVar(&rawRequest, "json", "", "raw JSON request body, or @- to read it from stdin")
 	addCommand.Flags().BoolVar(&dryRun, "dry-run", false, "validate input and print the request without executing it")
 	transferCommand.AddCommand(addCommand)

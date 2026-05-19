@@ -90,6 +90,51 @@ func TestRunAddTransferDryRunAcceptsJSONPayloadFromStdin(t *testing.T) {
 	}
 }
 
+func TestRunAddTransferDryRunRejectsInvalidURLsWithJSONEnvelope(t *testing.T) {
+	t.Parallel()
+
+	for _, rawURL := range []string{
+		"ftp://example.test/file.torrent",
+		"not-a-url",
+		"https://exa\x00mple.test/file.torrent",
+		"https://example.test/file name.torrent",
+		"magnet:?xt=urn:btih:test&dn=My Movie",
+	} {
+		rawURL := rawURL
+		t.Run(rawURL, func(t *testing.T) {
+			t.Parallel()
+
+			configPath := filepath.Join(t.TempDir(), "config.json")
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			exitCode := Run([]string{
+				"--config", configPath,
+				"add-transfer",
+				"--url", rawURL,
+				"--dry-run",
+				"--output", "json",
+			}, strings.NewReader(""), stdout, stderr)
+			if exitCode != int(exitCodeUsage) {
+				t.Fatalf("exitCode = %d, want %d", exitCode, exitCodeUsage)
+			}
+			if stdout.Len() != 0 {
+				t.Fatalf("stdout = %q, want empty", stdout.String())
+			}
+
+			var output map[string]any
+			if err := json.Unmarshal(stderr.Bytes(), &output); err != nil {
+				t.Fatalf("json.Unmarshal(stderr) error = %v", err)
+			}
+			if output["kind"] != string(errorKindUsage) {
+				t.Fatalf("kind = %v, want %q", output["kind"], errorKindUsage)
+			}
+			if output["code"] != "invalid_url" {
+				t.Fatalf("code = %v, want %q", output["code"], "invalid_url")
+			}
+		})
+	}
+}
+
 func TestRunUserSettingsSetDryRunSkipsAuthAndReturnsPreview(t *testing.T) {
 	t.Parallel()
 
