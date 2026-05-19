@@ -77,7 +77,12 @@ chilly auth login --local-browser --no-browser
 				} else if resolvedLocalBrowser {
 					request["mode"] = "local_browser"
 				} else {
+					loginURL, err := webAuthTokenURL(cfg.APIBaseURL)
+					if err != nil {
+						return err
+					}
 					request["mode"] = "web_token"
+					request["login_url"] = loginURL
 				}
 				return app.writeLocalDryRunPreview("auth login", request)
 			}
@@ -264,15 +269,16 @@ func (app *appContext) loginWithWebToken(cfg config.Config, skipOpen bool) (stri
 }
 
 func webAuthTokenURL(apiBaseURL string) (string, error) {
-	parsed, err := url.Parse(strings.TrimSpace(apiBaseURL))
+	normalizedAPIBaseURL, err := normalizeAPIBaseURL(apiBaseURL)
+	if err != nil {
+		return "", err
+	}
+	parsed, err := url.Parse(normalizedAPIBaseURL)
 	if err != nil {
 		return "", fmt.Errorf("parse api base url: %w", err)
 	}
-	if parsed.Scheme == "" || parsed.Host == "" {
-		return "", usageError("invalid_api_base_url", "api-base-url must start with http:// or https://")
-	}
 
-	host := strings.TrimPrefix(parsed.Hostname(), "api.")
+	host := webAuthHost(parsed.Hostname())
 	if port := parsed.Port(); port != "" {
 		host = net.JoinHostPort(host, port)
 	}
@@ -282,6 +288,17 @@ func webAuthTokenURL(apiBaseURL string) (string, error) {
 		Host:   host,
 		Path:   "/auth/cli-token",
 	}).String(), nil
+}
+
+func webAuthHost(apiHost string) string {
+	switch apiHost {
+	case "api.chill.institute":
+		return "chill.institute"
+	case "staging-api.chill.institute":
+		return "staging.chill.institute"
+	default:
+		return strings.TrimPrefix(apiHost, "api.")
+	}
 }
 
 func newAuthLogoutCommand(app *appContext) *cobra.Command {
