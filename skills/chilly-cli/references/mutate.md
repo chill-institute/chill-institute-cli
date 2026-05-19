@@ -11,6 +11,7 @@ Use this reference for side-effecting commands.
 
 ## Transfer Mutations
 
+- `add-transfer` accepts `magnet:?` links and `http://` or `https://` URLs with a host. Other schemes, plain strings, control characters, and unescaped whitespace fail locally during dry-run.
 - Preview add-transfer: `chilly add-transfer --url "magnet:?xt=..." --dry-run --output json`
 - Exact request body: `printf '{"url":"magnet:?xt=..."}' | chilly add-transfer --json @- --dry-run --output json`
 - Nested alias: `printf '{"url":"magnet:?xt=..."}' | chilly user transfer add --json @- --dry-run --output json`

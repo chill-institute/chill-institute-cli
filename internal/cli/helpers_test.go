@@ -277,14 +277,44 @@ func TestNormalizeIndexerID(t *testing.T) {
 func TestNormalizeTransferURL(t *testing.T) {
 	t.Parallel()
 
-	if got, err := normalizeTransferURL(" magnet:?xt=urn:btih:test "); err != nil || got != "magnet:?xt=urn:btih:test" {
-		t.Fatalf("normalizeTransferURL() = %q, %v", got, err)
+	for _, tc := range []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{name: "magnet", raw: " magnet:?xt=urn:btih:test ", want: "magnet:?xt=urn:btih:test"},
+		{name: "http", raw: " http://example.test/file.torrent ", want: "http://example.test/file.torrent"},
+		{name: "https", raw: " https://example.test/file.torrent ", want: "https://example.test/file.torrent"},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got, err := normalizeTransferURL(tc.raw); err != nil || got != tc.want {
+				t.Fatalf("normalizeTransferURL() = %q, %v; want %q, nil", got, err, tc.want)
+			}
+		})
 	}
 
 	if _, err := normalizeTransferURL(""); err == nil {
 		t.Fatal("normalizeTransferURL(empty) error = nil, want error")
 	}
-	if _, err := normalizeTransferURL("bad\x00url"); err == nil {
-		t.Fatal("normalizeTransferURL(control) error = nil, want error")
+
+	for _, raw := range []string{
+		"ftp://example.test/file.torrent",
+		"not-a-url",
+		"bad\x00url",
+		"https://:443/file.torrent",
+		"https://example.test/file name.torrent",
+		"magnet:?xt=urn:btih:test&dn=My Movie",
+	} {
+		raw := raw
+		t.Run(raw, func(t *testing.T) {
+			t.Parallel()
+
+			if _, err := normalizeTransferURL(raw); err == nil {
+				t.Fatalf("normalizeTransferURL(%q) error = nil, want error", raw)
+			}
+		})
 	}
 }

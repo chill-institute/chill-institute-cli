@@ -3,11 +3,17 @@ package cli
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"unicode"
 
 	"github.com/chill-institute/chill-cli/internal/rpc"
 	"github.com/spf13/cobra"
+)
+
+const (
+	addTransferURLDescription     = "magnet link or HTTP(S) URL"
+	addTransferURLFlagDescription = addTransferURLDescription + " to add as transfer"
 )
 
 func newAddTransferCommand(app *appContext) *cobra.Command {
@@ -28,7 +34,7 @@ chilly add-transfer --url "magnet:?xt=urn:btih:..." --dry-run --output json
 		},
 	}
 
-	command.Flags().StringVar(&transferURL, "url", "", "magnet or URL to add as transfer")
+	command.Flags().StringVar(&transferURL, "url", "", addTransferURLFlagDescription)
 	command.Flags().StringVar(&rawRequest, "json", "", "raw JSON request body, or @- to read it from stdin")
 	command.Flags().BoolVar(&dryRun, "dry-run", false, "validate input and print the request without executing it")
 	return command
@@ -105,6 +111,22 @@ func normalizeTransferURL(raw string) (string, error) {
 	}
 	if strings.IndexFunc(trimmed, unicode.IsControl) >= 0 {
 		return "", usageError("invalid_url", "--url must not contain control characters")
+	}
+	if strings.IndexFunc(trimmed, unicode.IsSpace) >= 0 {
+		return "", usageError("invalid_url", "--url must not contain unescaped whitespace")
+	}
+	if strings.HasPrefix(strings.ToLower(trimmed), "magnet:?") {
+		return trimmed, nil
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return "", usageError("invalid_url", "parse --url: %v", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return "", usageError("invalid_url", "--url must be a magnet link or start with http:// or https://")
+	}
+	if parsed.Hostname() == "" {
+		return "", usageError("invalid_url", "--url must include a host")
 	}
 	return trimmed, nil
 }

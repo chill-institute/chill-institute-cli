@@ -89,7 +89,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 		LinkedProcedure: procedureUserAddTransfer,
 		Output:          schemaOutput{JSON: true, Human: true, Type: "chill.v4.AddTransferResponse"},
 		Inputs: appendInputs(
-			schemaInput{Name: "url", Type: "string", Description: "magnet or URL to add as transfer; use either --url or --json"},
+			schemaInput{Name: "url", Type: "string", Description: addTransferURLFlagDescription + "; use either --url or --json"},
 			schemaInput{Name: "json", Type: "string", Description: "raw JSON request body, or @- to read it from stdin"},
 			schemaInput{Name: "dry-run", Type: "boolean", Description: "validate input and print the request without executing it"},
 		),
@@ -633,7 +633,7 @@ var commandSchemaRegistry = map[string]schemaEntry{
 		LinkedProcedure: procedureUserAddTransfer,
 		Output:          schemaOutput{JSON: true, Human: true, Type: "chill.v4.AddTransferResponse"},
 		Inputs: appendInputs(
-			schemaInput{Name: "url", Type: "string", Description: "magnet or URL; use either --url or --json"},
+			schemaInput{Name: "url", Type: "string", Description: addTransferURLDescription + "; use either --url or --json"},
 			schemaInput{Name: "json", Type: "string", Description: "raw JSON request body, or @- to read it from stdin"},
 			schemaInput{Name: "dry-run", Type: "boolean", Description: "validate input and print the request without executing it"},
 		),
@@ -688,7 +688,7 @@ var procedureSchemaRegistry = map[string]schemaEntry{
 		SupportsDryRun: true,
 		Output:         schemaOutput{JSON: true, Type: "chill.v4.AddTransferResponse"},
 		Inputs: []schemaInput{
-			{Name: "url", Type: "string", Required: true, Description: "magnet or URL to add as transfer"},
+			{Name: "url", Type: "string", Required: true, Description: addTransferURLFlagDescription},
 		},
 	},
 	procedureUserGetIndexers: {
